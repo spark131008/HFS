@@ -278,360 +278,360 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Butter Chicken Feedback Charts */}
+      {/* Product Feedback Charts - reorganized into columns */}
       <div className="grid md:grid-cols-2 gap-6 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Butter Chicken Texture
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Distribution of texture feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[350px] flex justify-center items-center">
-              <div className="w-[80%]">
-                <PieChart data={{
-                  labels: butterChickenTextureData?.map((item: FeedbackData) => item.m1_q1) || [],
-                  datasets: [{
-                    data: butterChickenTextureData?.map((item: FeedbackData) => item.total_responses) || [],
-                    backgroundColor: [
-                      CHART_COLORS.primary,
-                      CHART_COLORS.success,
-                      CHART_COLORS.warning,
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 10
-                  }]
-                }} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Butter Chicken Sauce
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Distribution of sauce feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[350px] flex justify-center items-center">
-              <div className="w-[80%]">
-                <DoughnutChart data={{
-                  labels: butterChickenSauceData?.map((item: FeedbackData) => item.m1_q2) || [],
-                  datasets: [{
-                    data: butterChickenSauceData?.map((item: FeedbackData) => item.total_responses) || [],
-                    backgroundColor: [
-                      CHART_COLORS.info,
-                      CHART_COLORS.warning,
-                      CHART_COLORS.error,
-                      CHART_COLORS.primary,
-                      CHART_COLORS.success,
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 10
-                  }]
-                }} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Mango Lassi Feedback Charts */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Mango Lassi Freshness
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Distribution of freshness feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[350px] flex justify-center items-center">
-              <div className="w-[90%]">
-                <BarChart 
-                  horizontal={true}
-                  data={{
-                    labels: mangoLassiFreshnessData?.map((item: FeedbackData) => item.m2_q1) || [],
+        {/* Butter Chicken Column */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
+                Butter Chicken Texture
+              </CardTitle>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Distribution of texture feedback
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px] flex justify-center items-center">
+                <div className="w-[80%]">
+                  <PieChart data={{
+                    labels: butterChickenTextureData?.map((item: FeedbackData) => item.m1_q1) || [],
                     datasets: [{
-                      label: 'Responses',
-                      data: mangoLassiFreshnessData?.map((item: FeedbackData) => item.total_responses) || [],
+                      data: butterChickenTextureData?.map((item: FeedbackData) => item.total_responses) || [],
                       backgroundColor: [
                         CHART_COLORS.primary,
+                        CHART_COLORS.success,
+                        CHART_COLORS.warning,
+                      ],
+                      borderWidth: 0,
+                      hoverOffset: 10
+                    }]
+                  }} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
+                Butter Chicken Sauce
+              </CardTitle>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Distribution of sauce feedback
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px] flex justify-center items-center">
+                <div className="w-[80%]">
+                  <DoughnutChart data={{
+                    labels: butterChickenSauceData?.map((item: FeedbackData) => item.m1_q2) || [],
+                    datasets: [{
+                      data: butterChickenSauceData?.map((item: FeedbackData) => item.total_responses) || [],
+                      backgroundColor: [
+                        CHART_COLORS.info,
                         CHART_COLORS.warning,
                         CHART_COLORS.error,
+                        CHART_COLORS.primary,
+                        CHART_COLORS.success,
                       ],
-                      borderRadius: 6,
-                      barThickness: 30,
+                      borderWidth: 0,
+                      hoverOffset: 10
                     }]
-                  }} 
-                />
+                  }} />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Mango Lassi Sweetness
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Distribution of sweetness feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[350px] flex justify-center items-center">
-              <div className="w-[80%]">
-                <RadarChart data={{
-                  labels: mangoLassiSweetnessData?.map((item: FeedbackData) => item.m2_q2) || [],
-                  datasets: [{
-                    label: 'Responses',
-                    data: mangoLassiSweetnessData?.map((item: FeedbackData) => item.total_responses) || [],
-                    backgroundColor: 'rgba(14, 165, 233, 0.2)',
-                    borderColor: CHART_COLORS.info,
-                    borderWidth: 2,
-                    pointBackgroundColor: CHART_COLORS.info,
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: CHART_COLORS.info
-                  }]
-                }} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Add this new section before the final closing div */}
-      <div className="grid md:grid-cols-2 gap-6 mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Butter Chicken Sentiment Trends
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Sentiment analysis of Butter Chicken feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[350px] flex justify-center items-center">
-              <div className="w-[95%]">
-                <LineChart 
-                  data={{
-                    datasets: [
-                      {
-                        label: 'Positive',
-                        data: butterChickenSentimentData
-                          ?.filter(item => item.m1_sentiment === 'Positive')
-                          .map(item => ({
-                            x: new Date(item.response_date),
-                            y: item.counts
-                          }))
-                          .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
-                        borderColor: CHART_COLORS.success,
-                        backgroundColor: CHART_COLORS.background.success,
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 4,
-                      },
-                      {
-                        label: 'Neutral',
-                        data: butterChickenSentimentData
-                          ?.filter(item => item.m1_sentiment === 'Neutral')
-                          .map(item => ({
-                            x: new Date(item.response_date),
-                            y: item.counts
-                          }))
-                          .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
-                        borderColor: CHART_COLORS.warning,
-                        backgroundColor: CHART_COLORS.background.warning,
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 4,
-                      },
-                      {
-                        label: 'Negative',
-                        data: butterChickenSentimentData
-                          ?.filter(item => item.m1_sentiment === 'Negative')
-                          .map(item => ({
-                            x: new Date(item.response_date),
-                            y: item.counts
-                          }))
-                          .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
-                        borderColor: CHART_COLORS.error,
-                        backgroundColor: CHART_COLORS.background.error,
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 4,
-                      }
-                    ]
-                  }}
-                  options={{
-                    scales: {
-                      x: {
-                        type: 'time',
-                        time: {
-                          unit: 'day',
-                          displayFormats: {
-                            day: 'MMM d'
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
+                Butter Chicken Sentiment Trends
+              </CardTitle>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Sentiment analysis of Butter Chicken feedback
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px] flex justify-center items-center">
+                <div className="w-[95%]">
+                  <LineChart 
+                    data={{
+                      datasets: [
+                        {
+                          label: 'Positive',
+                          data: butterChickenSentimentData
+                            ?.filter(item => item.m1_sentiment === 'Positive')
+                            .map(item => ({
+                              x: new Date(item.response_date),
+                              y: item.counts
+                            }))
+                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                          borderColor: CHART_COLORS.success,
+                          backgroundColor: CHART_COLORS.background.success,
+                          tension: 0.3,
+                          fill: false,
+                          pointRadius: 4,
+                        },
+                        {
+                          label: 'Neutral',
+                          data: butterChickenSentimentData
+                            ?.filter(item => item.m1_sentiment === 'Neutral')
+                            .map(item => ({
+                              x: new Date(item.response_date),
+                              y: item.counts
+                            }))
+                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                          borderColor: CHART_COLORS.warning,
+                          backgroundColor: CHART_COLORS.background.warning,
+                          tension: 0.3,
+                          fill: false,
+                          pointRadius: 4,
+                        },
+                        {
+                          label: 'Negative',
+                          data: butterChickenSentimentData
+                            ?.filter(item => item.m1_sentiment === 'Negative')
+                            .map(item => ({
+                              x: new Date(item.response_date),
+                              y: item.counts
+                            }))
+                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                          borderColor: CHART_COLORS.error,
+                          backgroundColor: CHART_COLORS.background.error,
+                          tension: 0.3,
+                          fill: false,
+                          pointRadius: 4,
+                        }
+                      ]
+                    }}
+                    options={{
+                      scales: {
+                        x: {
+                          type: 'time',
+                          time: {
+                            unit: 'day',
+                            displayFormats: {
+                              day: 'MMM d'
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: 'Response Date'
                           }
                         },
-                        title: {
-                          display: true,
-                          text: 'Response Date'
+                        y: {
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Number of Responses'
+                          }
                         }
                       },
-                      y: {
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Number of Responses'
+                      plugins: {
+                        tooltip: {
+                          mode: 'index',
+                          intersect: false
+                        },
+                        legend: {
+                          position: 'bottom',
+                          labels: {
+                            usePointStyle: true,
+                            padding: 20
+                          }
                         }
-                      }
-                    },
-                    plugins: {
-                      tooltip: {
-                        mode: 'index',
+                      },
+                      interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
                         intersect: false
-                      },
-                      legend: {
-                        position: 'bottom',
-                        labels: {
-                          usePointStyle: true,
-                          padding: 20
-                        }
                       }
-                    },
-                    interaction: {
-                      mode: 'nearest',
-                      axis: 'x',
-                      intersect: false
-                    }
-                  }}
-                />
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Mango Lassi Sentiment Trends
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Sentiment analysis of Mango Lassi feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[350px] flex justify-center items-center">
-              <div className="w-[95%]">
-                <LineChart 
-                  data={{
-                    datasets: [
-                      {
-                        label: 'Positive',
-                        data: mangoLassiSentimentData
-                          ?.filter(item => item.m2_sentiment === 'Positive')
-                          .map(item => ({
-                            x: new Date(item.response_date),
-                            y: item.counts
-                          }))
-                          .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
-                        borderColor: CHART_COLORS.success,
-                        backgroundColor: CHART_COLORS.background.success,
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 4,
-                      },
-                      {
-                        label: 'Neutral',
-                        data: mangoLassiSentimentData
-                          ?.filter(item => item.m2_sentiment === 'Neutral')
-                          .map(item => ({
-                            x: new Date(item.response_date),
-                            y: item.counts
-                          }))
-                          .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
-                        borderColor: CHART_COLORS.warning,
-                        backgroundColor: CHART_COLORS.background.warning,
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 4,
-                      },
-                      {
-                        label: 'Negative',
-                        data: mangoLassiSentimentData
-                          ?.filter(item => item.m2_sentiment === 'Negative')
-                          .map(item => ({
-                            x: new Date(item.response_date),
-                            y: item.counts
-                          }))
-                          .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
-                        borderColor: CHART_COLORS.error,
-                        backgroundColor: CHART_COLORS.background.error,
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 4,
-                      }
-                    ]
-                  }}
-                  options={{
-                    scales: {
-                      x: {
-                        type: 'time',
-                        time: {
-                          unit: 'day',
-                          displayFormats: {
-                            day: 'MMM d'
+        {/* Mango Lassi Column */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
+                Mango Lassi Freshness
+              </CardTitle>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Distribution of freshness feedback
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px] flex justify-center items-center">
+                <div className="w-[90%]">
+                  <BarChart 
+                    horizontal={true}
+                    data={{
+                      labels: mangoLassiFreshnessData?.map((item: FeedbackData) => item.m2_q1) || [],
+                      datasets: [{
+                        label: 'Responses',
+                        data: mangoLassiFreshnessData?.map((item: FeedbackData) => item.total_responses) || [],
+                        backgroundColor: [
+                          CHART_COLORS.primary,
+                          CHART_COLORS.warning,
+                          CHART_COLORS.error,
+                        ],
+                        borderRadius: 6,
+                        barThickness: 30,
+                      }]
+                    }} 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
+                Mango Lassi Sweetness
+              </CardTitle>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Distribution of sweetness feedback
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px] flex justify-center items-center">
+                <div className="w-[80%]">
+                  <RadarChart data={{
+                    labels: mangoLassiSweetnessData?.map((item: FeedbackData) => item.m2_q2) || [],
+                    datasets: [{
+                      label: 'Responses',
+                      data: mangoLassiSweetnessData?.map((item: FeedbackData) => item.total_responses) || [],
+                      backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                      borderColor: CHART_COLORS.info,
+                      borderWidth: 2,
+                      pointBackgroundColor: CHART_COLORS.info,
+                      pointBorderColor: '#fff',
+                      pointHoverBackgroundColor: '#fff',
+                      pointHoverBorderColor: CHART_COLORS.info
+                    }]
+                  }} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
+                Mango Lassi Sentiment Trends
+              </CardTitle>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Sentiment analysis of Mango Lassi feedback
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px] flex justify-center items-center">
+                <div className="w-[95%]">
+                  <LineChart 
+                    data={{
+                      datasets: [
+                        {
+                          label: 'Positive',
+                          data: mangoLassiSentimentData
+                            ?.filter(item => item.m2_sentiment === 'Positive')
+                            .map(item => ({
+                              x: new Date(item.response_date),
+                              y: item.counts
+                            }))
+                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                          borderColor: CHART_COLORS.success,
+                          backgroundColor: CHART_COLORS.background.success,
+                          tension: 0.3,
+                          fill: false,
+                          pointRadius: 4,
+                        },
+                        {
+                          label: 'Neutral',
+                          data: mangoLassiSentimentData
+                            ?.filter(item => item.m2_sentiment === 'Neutral')
+                            .map(item => ({
+                              x: new Date(item.response_date),
+                              y: item.counts
+                            }))
+                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                          borderColor: CHART_COLORS.warning,
+                          backgroundColor: CHART_COLORS.background.warning,
+                          tension: 0.3,
+                          fill: false,
+                          pointRadius: 4,
+                        },
+                        {
+                          label: 'Negative',
+                          data: mangoLassiSentimentData
+                            ?.filter(item => item.m2_sentiment === 'Negative')
+                            .map(item => ({
+                              x: new Date(item.response_date),
+                              y: item.counts
+                            }))
+                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                          borderColor: CHART_COLORS.error,
+                          backgroundColor: CHART_COLORS.background.error,
+                          tension: 0.3,
+                          fill: false,
+                          pointRadius: 4,
+                        }
+                      ]
+                    }}
+                    options={{
+                      scales: {
+                        x: {
+                          type: 'time',
+                          time: {
+                            unit: 'day',
+                            displayFormats: {
+                              day: 'MMM d'
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: 'Response Date'
                           }
                         },
-                        title: {
-                          display: true,
-                          text: 'Response Date'
+                        y: {
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Number of Responses'
+                          }
                         }
                       },
-                      y: {
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Number of Responses'
+                      plugins: {
+                        tooltip: {
+                          mode: 'index',
+                          intersect: false
+                        },
+                        legend: {
+                          position: 'bottom',
+                          labels: {
+                            usePointStyle: true,
+                            padding: 20
+                          }
                         }
-                      }
-                    },
-                    plugins: {
-                      tooltip: {
-                        mode: 'index',
+                      },
+                      interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
                         intersect: false
-                      },
-                      legend: {
-                        position: 'bottom',
-                        labels: {
-                          usePointStyle: true,
-                          padding: 20
-                        }
                       }
-                    },
-                    interaction: {
-                      mode: 'nearest',
-                      axis: 'x',
-                      intersect: false
-                    }
-                  }}
-                />
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
     </div>
