@@ -13,7 +13,9 @@ import {
   RadialLinearScale,
   PointElement,
   LineElement,
-  TimeScale
+  TimeScale,
+  ChartData,
+  ChartOptions
 } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 
@@ -51,8 +53,26 @@ const defaultOptions = {
   }
 }
 
-export function BarChart({ data, options = {}, horizontal = false }: any) {
-  const mergedOptions = {
+interface DatasetProps {
+  label: string
+  data: number[]
+  backgroundColor?: string | string[]
+  borderColor?: string | string[]
+  borderWidth?: number
+}
+
+interface ChartProps {
+  data: ChartData<'bar' | 'pie' | 'doughnut' | 'radar' | 'line', number[], string>
+  options?: ChartOptions
+}
+
+interface BarChartProps extends ChartProps {
+  horizontal?: boolean
+}
+
+// Update component definitions
+export function BarChart({ data, options = {}, horizontal = false }: BarChartProps) {
+  const mergedOptions: ChartOptions = {
     ...defaultOptions,
     ...options,
     aspectRatio: horizontal ? 1.6 : 1.8,
@@ -83,8 +103,8 @@ export function BarChart({ data, options = {}, horizontal = false }: any) {
   return <Bar data={data} options={mergedOptions} />
 }
 
-export function PieChart({ data, options = {} }: any) {
-  const mergedOptions = {
+export function PieChart({ data, options = {} }: ChartProps) {
+  const mergedOptions: ChartOptions = {
     ...defaultOptions,
     ...options,
     aspectRatio: 1.3,
@@ -101,8 +121,8 @@ export function PieChart({ data, options = {} }: any) {
   return <Pie data={data} options={mergedOptions} />
 }
 
-export function DoughnutChart({ data, options = {} }: any) {
-  const mergedOptions = {
+export function DoughnutChart({ data, options = {} }: ChartProps) {
+  const mergedOptions: ChartOptions = {
     ...defaultOptions,
     ...options,
     aspectRatio: 1.3,
@@ -120,8 +140,8 @@ export function DoughnutChart({ data, options = {} }: any) {
   return <Doughnut data={data} options={mergedOptions} />
 }
 
-export function RadarChart({ data, options = {} }: any) {
-  const mergedOptions = {
+export function RadarChart({ data, options = {} }: ChartProps) {
+  const mergedOptions: ChartOptions = {
     ...defaultOptions,
     ...options,
     aspectRatio: 1.3,
@@ -146,8 +166,8 @@ export function RadarChart({ data, options = {} }: any) {
   return <Radar data={data} options={mergedOptions} />
 }
 
-export function LineChart({ data, options = {} }: any) {
-  const mergedOptions = {
+export function LineChart({ data, options = {} }: ChartProps) {
+  const mergedOptions: ChartOptions = {
     ...defaultOptions,
     ...options,
     aspectRatio: 2,
@@ -158,4 +178,4 @@ export function LineChart({ data, options = {} }: any) {
     }
   }
   return <Line data={data} options={mergedOptions} />
-} 
+}

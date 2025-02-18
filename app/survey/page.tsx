@@ -1,7 +1,7 @@
 "use client"
 
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/app/components/ui/button"
 import {
@@ -15,10 +15,6 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
-
-export const metadata = {
-  title: 'HFS Survey',
-};
 
 const formSchema = z.object({
   butterChickenTexture: z.string(),

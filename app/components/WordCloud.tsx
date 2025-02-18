@@ -9,6 +9,15 @@ interface Word {
   value: number
 }
 
+interface CloudWord {
+  text: string
+  size: number
+  x?: number
+  y?: number
+  rotate?: number
+  font?: string
+}
+
 interface WordCloudProps {
   words: Word[]
   width?: number
@@ -41,7 +50,7 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
 
     layout.start()
 
-    function draw(words: any[]) {
+    function draw(words: CloudWord[]) {
       const group = svg
         .append("g")
         .attr("transform", `translate(${width / 2},${height / 2})`)
@@ -68,4 +77,4 @@ export function WordCloud({ words, width = 600, height = 400 }: WordCloudProps) 
       style={{ width: '100%', height: '100%' }}
     />
   )
-} 
+}

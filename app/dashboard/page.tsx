@@ -14,10 +14,8 @@ import {
   TimeScale
 } from 'chart.js'
 import 'chartjs-adapter-date-fns'
-import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/components/Charts'
-import { cookies } from 'next/headers'
-import { WordCloud } from '@/components/WordCloud'
-import { Line } from 'react-chartjs-2'
+import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/app/components/Charts'
+import { WordCloud } from '@/app/components/WordCloud'
 import { TrendingUp, Users, Target } from 'lucide-react'
 
 export const metadata = {
