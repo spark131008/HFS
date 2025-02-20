@@ -55,24 +55,21 @@ export default function SurveyPage() {
     setError(null);
 
     try {
-      // Get current timestamp
-      const submissionDate = new Date().toISOString();
-
-      // Prepare the data for Supabase
+      // Prepare the data for Supabase according to table structure
       const surveyData = {
-        submission_date: submissionDate,
+        location: 'Default Location',
+        menu_item1: 'Butter Chicken',
         m1_q1: formData.butterChickenTexture,
         m1_q2: formData.butterChickenSauce,
-        m1_comments: formData.butterChickenComments || null,
+        m1_q3: formData.butterChickenComments || null,
+        menu_item2: 'Mango Lassi',
         m2_q1: formData.mangoLassiFreshness,
         m2_q2: formData.mangoLassiSweetness,
-        m2_comments: formData.mangoLassiComments || null,
-        // Add basic sentiment analysis based on responses
+        m2_q3: formData.mangoLassiComments || null,
         m1_sentiment: getSentiment(formData.butterChickenTexture, formData.butterChickenSauce),
         m2_sentiment: getSentiment(formData.mangoLassiFreshness, formData.mangoLassiSweetness),
-        // You might want to get these from the user's context or browser
-        location: 'Default Location',
-        device_type: getDeviceType(),
+
+        // response_date will be set by default in the database
       };
 
       const { error: supabaseError } = await supabase
@@ -115,18 +112,6 @@ export default function SurveyPage() {
     if (positiveCount / totalResponses > 0.5) return 'Positive';
     if (negativeCount / totalResponses > 0.5) return 'Negative';
     return 'Neutral';
-  };
-
-  // Helper function to determine device type
-  const getDeviceType = () => {
-    const ua = navigator.userAgent;
-    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
-      return 'tablet';
-    }
-    if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
-      return 'mobile';
-    }
-    return 'desktop';
   };
 
   return (
