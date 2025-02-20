@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClientComponentClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
 interface FormData {
