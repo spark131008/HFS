@@ -1,42 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { createServerComponentClient } from "@/utils/supabase/server"
-import { 
-  Chart as ChartJS, 
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  LineElement,
-  PointElement,
-  TimeScale
-} from 'chart.js'
-import 'chartjs-adapter-date-fns'
-import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/components/Charts'
-import { cookies } from 'next/headers'
-import { WordCloud } from '@/components/WordCloud'
-import { Line } from 'react-chartjs-2'
+import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/app/components/ui/ClientChartWrapper'
 import { TrendingUp, Users, Target } from 'lucide-react'
-
-export const metadata = {
-  title: 'HFS Dashboard',
-};
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  TimeScale,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-)
 
 const CHART_COLORS = {
   primary: 'rgba(79, 70, 229, 0.85)',    // Deep Indigo
@@ -69,18 +34,6 @@ interface FeedbackData {
   total_responses: number
 }
 
-interface WordData {
-  word: string
-  word_count: number
-}
-
-// Add this interface with the existing interfaces
-interface SentimentData {
-  m1_sentiment?: string
-  m2_sentiment?: string
-  counts: number
-}
-
 // Update the interface to match the function return type
 interface SentimentTimeData {
   response_date: Date
@@ -98,18 +51,16 @@ export default async function DashboardPage() {
   const totalResponses = totalResponsesData?.[0]?.total_responses || 0
   const totalRequests = 100 + totalResponses
   const conversionRate = (totalResponses * 100 / totalRequests).toFixed(1)
-
   // Fetch data with type annotations
-  const { data: locationData } = await supabase.rpc<LocationData>('get_responses_by_location')
-  const { data: butterChickenTextureData } = await supabase.rpc<FeedbackData>('count_m1_q1')
-  const { data: butterChickenSauceData } = await supabase.rpc<FeedbackData>('count_m1_q2')
-  const { data: mangoLassiFreshnessData } = await supabase.rpc<FeedbackData>('count_m2_q1')
-  const { data: mangoLassiSweetnessData } = await supabase.rpc<FeedbackData>('count_m2_q2')
-  const { data: wordData } = await supabase.rpc<WordData>('get_feedback_words')
+  const { data: locationData } = await supabase.rpc('get_responses_by_location') as { data: LocationData[] }
+  const { data: butterChickenTextureData } = await supabase.rpc('count_m1_q1') as { data: FeedbackData[] }
+  const { data: butterChickenSauceData } = await supabase.rpc('count_m1_q2') as { data: FeedbackData[] }
+  const { data: mangoLassiFreshnessData } = await supabase.rpc('count_m2_q1') as { data: FeedbackData[] }
+  const { data: mangoLassiSweetnessData } = await supabase.rpc('count_m2_q2') as { data: FeedbackData[] }
 
   // Update the data fetching
-  const { data: butterChickenSentimentData } = await supabase.rpc<SentimentTimeData>('m1_sentiment_count')
-  const { data: mangoLassiSentimentData } = await supabase.rpc<SentimentTimeData>('m2_sentiment_count')
+  const { data: butterChickenSentimentData } = await supabase.rpc('m1_sentiment_count') as { data: SentimentTimeData[] }
+  const { data: mangoLassiSentimentData } = await supabase.rpc('m2_sentiment_count') as { data: SentimentTimeData[] }
 
   // Chart configuration for location data
   const locationChartData = {
@@ -122,45 +73,6 @@ export default async function DashboardPage() {
       barThickness: 40,
       hoverBackgroundColor: 'rgba(79, 70, 229, 0.95)',
     }]
-  }
-
-  // Modify the chart data preparation
-  const sentimentChartData = {
-    labels: [...new Set(mangoLassiSentimentData?.map(item => 
-      new Date(item.response_date).toLocaleDateString()
-    ))].sort(),
-    datasets: [
-      {
-        label: 'Positive',
-        data: mangoLassiSentimentData
-          ?.filter(item => item.m2_sentiment === 'Positive')
-          .map(item => item.counts) || [],
-        borderColor: CHART_COLORS.success,
-        backgroundColor: CHART_COLORS.background.success,
-        tension: 0.3,
-        fill: false
-      },
-      {
-        label: 'Neutral',
-        data: mangoLassiSentimentData
-          ?.filter(item => item.m2_sentiment === 'Neutral')
-          .map(item => item.counts) || [],
-        borderColor: CHART_COLORS.warning,
-        backgroundColor: CHART_COLORS.background.warning,
-        tension: 0.3,
-        fill: false
-      },
-      {
-        label: 'Negative',
-        data: mangoLassiSentimentData
-          ?.filter(item => item.m2_sentiment === 'Negative')
-          .map(item => item.counts) || [],
-        borderColor: CHART_COLORS.error,
-        backgroundColor: CHART_COLORS.background.error,
-        tension: 0.3,
-        fill: false
-      }
-    ]
   }
 
   return (
@@ -241,7 +153,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Location and Word Cloud Charts */}
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
+      <div className="mb-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
@@ -251,28 +163,11 @@ export default async function DashboardPage() {
               Geographic breakdown of customer feedback
             </p>
           </CardHeader>
-          <CardContent className="p-6 flex justify-center items-center">
-            <div className="h-[400px] w-[90%]">
-              <BarChart data={locationChartData} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 font-display tracking-tight">
-              Common Feedback Terms
-            </CardTitle>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              Top terms mentioned in customer feedback
-            </p>
-          </CardHeader>
-          <CardContent className="p-6 flex justify-center items-center">
-            <div className="h-[400px] w-[90%]">
-              <WordCloud words={wordData?.map((item: WordData) => ({
-                text: item.word,
-                value: Number(item.word_count)
-              })) || []} />
+          <CardContent className="p-6">
+            <div className="h-[400px] w-full flex justify-center items-center">
+              <div className="relative w-full max-w-[800px]">
+                <BarChart data={locationChartData} />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -292,8 +187,8 @@ export default async function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px] flex justify-center items-center">
-                <div className="w-[80%]">
+              <div className="h-[280px] w-full flex justify-center items-center">
+                <div className="relative w-full max-w-[300px]">
                   <PieChart data={{
                     labels: butterChickenTextureData?.map((item: FeedbackData) => item.m1_q1) || [],
                     datasets: [{
@@ -304,7 +199,7 @@ export default async function DashboardPage() {
                         CHART_COLORS.warning,
                       ],
                       borderWidth: 0,
-                      hoverOffset: 10
+                      hoverOffset: 4
                     }]
                   }} />
                 </div>
@@ -322,8 +217,8 @@ export default async function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px] flex justify-center items-center">
-                <div className="w-[80%]">
+              <div className="h-[280px] w-full flex justify-center items-center">
+                <div className="relative w-full max-w-[300px]">
                   <DoughnutChart data={{
                     labels: butterChickenSauceData?.map((item: FeedbackData) => item.m1_q2) || [],
                     datasets: [{
@@ -354,8 +249,8 @@ export default async function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px] flex justify-center items-center">
-                <div className="w-[95%]">
+              <div className="h-[300px] w-full flex justify-center items-center">
+                <div className="relative w-full max-w-[800px]">
                   <LineChart 
                     data={{
                       datasets: [
@@ -363,46 +258,49 @@ export default async function DashboardPage() {
                           label: 'Positive',
                           data: butterChickenSentimentData
                             ?.filter(item => item.m1_sentiment === 'Positive')
+                            .sort((a, b) => new Date(a.response_date).getTime() - new Date(b.response_date).getTime())
                             .map(item => ({
-                              x: new Date(item.response_date),
+                              x: new Date(item.response_date).getTime(),
                               y: item.counts
-                            }))
-                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                            })) || [],
                           borderColor: CHART_COLORS.success,
                           backgroundColor: CHART_COLORS.background.success,
                           tension: 0.3,
                           fill: false,
                           pointRadius: 4,
+                          cubicInterpolationMode: 'monotone',
                         },
                         {
                           label: 'Neutral',
                           data: butterChickenSentimentData
                             ?.filter(item => item.m1_sentiment === 'Neutral')
+                            .sort((a, b) => new Date(a.response_date).getTime() - new Date(b.response_date).getTime())
                             .map(item => ({
-                              x: new Date(item.response_date),
+                              x: new Date(item.response_date).getTime(),
                               y: item.counts
-                            }))
-                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                            })) || [],
                           borderColor: CHART_COLORS.warning,
                           backgroundColor: CHART_COLORS.background.warning,
                           tension: 0.3,
                           fill: false,
                           pointRadius: 4,
+                          cubicInterpolationMode: 'monotone',
                         },
                         {
                           label: 'Negative',
                           data: butterChickenSentimentData
                             ?.filter(item => item.m1_sentiment === 'Negative')
+                            .sort((a, b) => new Date(a.response_date).getTime() - new Date(b.response_date).getTime())
                             .map(item => ({
-                              x: new Date(item.response_date),
+                              x: new Date(item.response_date).getTime(),
                               y: item.counts
-                            }))
-                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                            })) || [],
                           borderColor: CHART_COLORS.error,
                           backgroundColor: CHART_COLORS.background.error,
                           tension: 0.3,
                           fill: false,
                           pointRadius: 4,
+                          cubicInterpolationMode: 'monotone',
                         }
                       ]
                     }}
@@ -426,6 +324,10 @@ export default async function DashboardPage() {
                           title: {
                             display: true,
                             text: 'Number of Responses'
+                          },
+                          min: 0,
+                          ticks: {
+                            stepSize: 1
                           }
                         }
                       },
@@ -467,8 +369,8 @@ export default async function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px] flex justify-center items-center">
-                <div className="w-[90%]">
+              <div className="h-[280px] w-full flex justify-center items-center">
+                <div className="relative w-full max-w-[600px]">
                   <BarChart 
                     horizontal={true}
                     data={{
@@ -501,8 +403,8 @@ export default async function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px] flex justify-center items-center">
-                <div className="w-[80%]">
+              <div className="h-[280px] w-full flex justify-center items-center">
+                <div className="relative w-full max-w-[300px]">
                   <RadarChart data={{
                     labels: mangoLassiSweetnessData?.map((item: FeedbackData) => item.m2_q2) || [],
                     datasets: [{
@@ -532,8 +434,8 @@ export default async function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px] flex justify-center items-center">
-                <div className="w-[95%]">
+              <div className="h-[300px] w-full flex justify-center items-center">
+                <div className="relative w-full max-w-[800px]">
                   <LineChart 
                     data={{
                       datasets: [
@@ -541,46 +443,49 @@ export default async function DashboardPage() {
                           label: 'Positive',
                           data: mangoLassiSentimentData
                             ?.filter(item => item.m2_sentiment === 'Positive')
+                            .sort((a, b) => new Date(a.response_date).getTime() - new Date(b.response_date).getTime())
                             .map(item => ({
-                              x: new Date(item.response_date),
+                              x: new Date(item.response_date).getTime(),
                               y: item.counts
-                            }))
-                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                            })) || [],
                           borderColor: CHART_COLORS.success,
                           backgroundColor: CHART_COLORS.background.success,
                           tension: 0.3,
                           fill: false,
                           pointRadius: 4,
+                          cubicInterpolationMode: 'monotone',
                         },
                         {
                           label: 'Neutral',
                           data: mangoLassiSentimentData
                             ?.filter(item => item.m2_sentiment === 'Neutral')
+                            .sort((a, b) => new Date(a.response_date).getTime() - new Date(b.response_date).getTime())
                             .map(item => ({
-                              x: new Date(item.response_date),
+                              x: new Date(item.response_date).getTime(),
                               y: item.counts
-                            }))
-                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                            })) || [],
                           borderColor: CHART_COLORS.warning,
                           backgroundColor: CHART_COLORS.background.warning,
                           tension: 0.3,
                           fill: false,
                           pointRadius: 4,
+                          cubicInterpolationMode: 'monotone',
                         },
                         {
                           label: 'Negative',
                           data: mangoLassiSentimentData
                             ?.filter(item => item.m2_sentiment === 'Negative')
+                            .sort((a, b) => new Date(a.response_date).getTime() - new Date(b.response_date).getTime())
                             .map(item => ({
-                              x: new Date(item.response_date),
+                              x: new Date(item.response_date).getTime(),
                               y: item.counts
-                            }))
-                            .sort((a, b) => a.x.getTime() - b.x.getTime()) || [],
+                            })) || [],
                           borderColor: CHART_COLORS.error,
                           backgroundColor: CHART_COLORS.background.error,
                           tension: 0.3,
                           fill: false,
                           pointRadius: 4,
+                          cubicInterpolationMode: 'monotone',
                         }
                       ]
                     }}
@@ -604,6 +509,10 @@ export default async function DashboardPage() {
                           title: {
                             display: true,
                             text: 'Number of Responses'
+                          },
+                          min: 0,
+                          ticks: {
+                            stepSize: 1
                           }
                         }
                       },
