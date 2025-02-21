@@ -379,9 +379,9 @@ export default async function DashboardPage() {
                         label: 'Responses',
                         data: mangoLassiFreshnessData?.map((item: FeedbackData) => item.total_responses) || [],
                         backgroundColor: [
-                          CHART_COLORS.primary,
-                          CHART_COLORS.warning,
                           CHART_COLORS.error,
+                          CHART_COLORS.warning,
+                          CHART_COLORS.success,
                         ],
                         borderRadius: 6,
                         barThickness: 30,
