@@ -57,7 +57,7 @@ export default function SurveyPage() {
     try {
       // Prepare the data for Supabase according to table structure
       const surveyData = {
-        location: 'Default Location',
+        location: 'Jayanagar',
         menu_item1: 'Butter Chicken',
         m1_q1: formData.butterChickenTexture,
         m1_q2: formData.butterChickenSauce,
