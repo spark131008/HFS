@@ -9,7 +9,7 @@ export default function Login() {
   const supabase = createClient();
 
   async function SignInWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${location.origin}/auth/callback`,
@@ -25,7 +25,7 @@ export default function Login() {
   }
 
   async function signInWithFacebook() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "facebook",
       options: {
         redirectTo: `${location.origin}/auth/callback`,
@@ -41,7 +41,7 @@ export default function Login() {
   }
 
   async function signInWithApple() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "apple",
       options: {
         redirectTo: `${location.origin}/auth/callback`,
@@ -57,7 +57,7 @@ export default function Login() {
   }
 
   async function signInWithTwitter() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "twitter",
       options: {
         redirectTo: `${location.origin}/auth/callback`,
@@ -155,9 +155,9 @@ export default function Login() {
         </div>
         
         <p className="mt-8 max-w-md text-center text-xs text-muted-foreground">
-          By clicking "Sign in with Apple/Google", you acknowledge
-          that you have read and understood, and agree to HFS's
-          Terms & Conditions, Privacy Policy, and Content Policy.
+          By clicking &quot;Sign in with Apple/Google&quot;, you acknowledge
+          that you have read and understood, and agree to HFS&apos;s
+          Terms &amp; Conditions, Privacy Policy, and Content Policy.
         </p>
       </div>
     </>
