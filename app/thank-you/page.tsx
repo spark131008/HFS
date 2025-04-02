@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/app/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Card } from "@/app/components/ui/card";
+import { Card } from "@/components/ui/card";
 
 export default function ThankYou() {
   const router = useRouter();

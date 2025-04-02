@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createServerComponentClient } from "@/utils/supabase/server"
-import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/app/components/ui/ClientChartWrapper'
+import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/components/ui/ClientChartWrapper'
 import { TrendingUp, Users, Target } from 'lucide-react'
 
 const CHART_COLORS = {
