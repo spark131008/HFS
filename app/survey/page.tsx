@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Label } from '../components/ui/label';
-import { Button } from '../components/ui/button';
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { Textarea } from "../components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { createClientComponentClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
