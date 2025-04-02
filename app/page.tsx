@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import Header from "@/components/Header";
+import MainNavigationBar from "@/components/MainNavigationBar";
 import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import HowItWorks from "@/components/HowItWorks";
@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   description: "Welcome to the Hyper-personalized Feedback System",
 };
 
-export default function LandingPage() {
+export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <MainNavigationBar />
       <main className="flex-1">
         <HeroSection />
         <HowItWorks />

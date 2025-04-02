@@ -4,15 +4,18 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 
 type User = {
   name: string;
   avatar?: string;
 };
 
-export default function Header() {
+export default function MainNavigationBar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
 
   // Simulating auth check - in a real app, this would use a proper auth provider
   useEffect(() => {
@@ -27,13 +30,6 @@ export default function Header() {
       });
     }
   }, []);
-
-  const handleLogin = () => {
-    // For demo purposes - in a real app, this would redirect to login page
-    setIsLoggedIn(true);
-    setUser({ name: "John Doe" });
-    localStorage.setItem("isLoggedIn", "true");
-  };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
@@ -51,12 +47,16 @@ export default function Header() {
         </div>
         
         <nav className="hidden md:flex items-center space-x-6">
-          <Link href="#benefits" className="text-gray-600 hover:text-blue-600 transition-colors">
-            Benefits
-          </Link>
-          <Link href="#how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">
-            How It Works
-          </Link>
+          {isHomePage && (
+            <>
+              <Link href="#benefits" className="text-gray-600 hover:text-blue-600 transition-colors">
+                Benefits
+              </Link>
+              <Link href="#how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">
+                How It Works
+              </Link>
+            </>
+          )}
           
           {isLoggedIn ? (
             <div className="flex items-center space-x-4">
@@ -82,8 +82,10 @@ export default function Header() {
             </div>
           ) : (
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={handleLogin}>
-                Login
+              <Button variant="ghost">
+                <Link href="/login">
+                  Login
+                </Link>
               </Button>
               <Button>
                 Get Started
@@ -112,4 +114,4 @@ export default function Header() {
       </div>
     </header>
   );
-} 
+}

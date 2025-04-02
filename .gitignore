@@ -44,3 +44,4 @@ next-env.d.ts
 # vim
 .idea/
 *.swp
+.env*.local
