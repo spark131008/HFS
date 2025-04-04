@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { createServerComponentClient } from "@/utils/supabase/server"
+import { createClient } from "@/utils/supabase/server"
 import { BarChart, PieChart, DoughnutChart, RadarChart, LineChart } from '@/components/ui/ClientChartWrapper'
 import { TrendingUp, Users, Target } from 'lucide-react'
 
@@ -44,7 +44,7 @@ interface SentimentTimeData {
 
 // Make the component async
 export default async function DashboardPage() {
-  const supabase = await createServerComponentClient()
+  const supabase = await createClient()
 
   // Add new query for total responses
   const { data: totalResponsesData } = await supabase.rpc('total_count_responses')
