@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import MainNavigationBar from "@/components/MainNavigationBar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-// import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 // Define survey interface
@@ -20,19 +20,16 @@ export default async function UserPage() {
 
 
   // Check authentication
-//   const { data: { session } } = await supabase.auth.getSession();
-//   if (!session) {
-//     redirect("/login");
-//   }
-
-  // Get user data
-//   const { data: userData } = await supabase
-//     .from('users')
-//     .select('*')
-//     .eq('id', session.user.id)
-//     .single();
-
-  // Get user's surveys
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    redirect("/login");
+  }
+  
+  // Get verified user data from Auth server
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+ }
 
   const { data: surveys }: { data: Survey[] | null} = await supabase
     .from('survey')
@@ -41,7 +38,7 @@ export default async function UserPage() {
         title, 
         created_at
     `)
-    // .eq('user_id', session.user.id) // Replace with actual user ID
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .then(result => {
         // Transform the result to match your Survey interface
