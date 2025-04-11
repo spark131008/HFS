@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 type User = {
-  name: string;
+  name?: string;
+  email?: string;
   avatar?: string;
 };
 
@@ -15,26 +17,57 @@ export default function MainNavigationBar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const isHomePage = pathname === "/";
+  const isLoginPage = pathname === "/login";
+  const supabase = createClient();
 
-  // Simulating auth check - in a real app, this would use a proper auth provider
+  // Check auth status using Supabase client
   useEffect(() => {
-    // Check if user is logged in from localStorage or cookies
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setIsLoggedIn(true);
+        // Get user details from session
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser({
+          name: user?.user_metadata?.full_name || user?.email?.split('@')[0],
+          email: user?.email,
+          avatar: user?.user_metadata?.avatar_url
+        });
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+      }
+    };
     
-    if (loggedIn) {
-      setIsLoggedIn(true);
-      // Mock user data
-      setUser({
-        name: "John Doe",
-      });
-    }
-  }, []);
+    checkUser();
+    
+    // Set up listener for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+      if (session?.user) {
+        setUser({
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+          email: session.user.email,
+          avatar: session.user.user_metadata?.avatar_url
+        });
+      } else {
+        setUser(null);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase.auth]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsLoggedIn(false);
     setUser(null);
-    localStorage.removeItem("isLoggedIn");
+    router.push('/'); // Redirect to landing page after logout
   };
 
   return (
@@ -47,7 +80,7 @@ export default function MainNavigationBar() {
         </div>
         
         <nav className="hidden md:flex items-center space-x-6">
-          {isHomePage && (
+          {isHomePage && !isLoggedIn && (
             <>
               <Link href="#benefits" className="text-gray-600 hover:text-blue-600 transition-colors">
                 Benefits
@@ -60,21 +93,24 @@ export default function MainNavigationBar() {
           
           {isLoggedIn ? (
             <div className="flex items-center space-x-4">
+              <Link href="/user" className="text-gray-600 hover:text-blue-600 transition-colors">
+                My Surveys
+              </Link>
               <div className="flex items-center space-x-2">
                 <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
                   {user?.avatar ? (
                     <Image 
                       src={user.avatar} 
-                      alt={user.name} 
+                      alt={user.name || 'User'} 
                       width={32} 
                       height={32} 
                       className="rounded-full" 
                     />
                   ) : (
-                    <span>{user?.name.charAt(0)}</span>
+                    <span>{user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}</span>
                   )}
                 </div>
-                <span className="text-sm font-medium">{user?.name}</span>
+                <span className="text-sm font-medium">{user?.name || user?.email?.split('@')[0]}</span>
               </div>
               <Button variant="ghost" onClick={handleLogout}>
                 Logout
@@ -82,14 +118,20 @@ export default function MainNavigationBar() {
             </div>
           ) : (
             <div className="flex items-center space-x-4">
-              <Button variant="ghost">
-                <Link href="/login">
-                  Login
-                </Link>
-              </Button>
-              <Button>
-                Get Started
-              </Button>
+              {!isLoginPage && (
+                <Button variant="ghost">
+                  <Link href="/login">
+                    Sign up/Log in
+                  </Link>
+                </Button>
+              )}
+              {pathname !== '/login' && (
+                <Button>
+                  <Link href="/login">
+                    Get Started
+                  </Link>
+                </Button>
+              )}
             </div>
           )}
         </nav>
