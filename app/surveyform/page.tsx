@@ -6,19 +6,24 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/utils/supabase/client'
+
+// Define database types
+type DBQuestion = {
+  question_text: string
+  options: Array<string | OptionObject>
+}
 
 type Question = {
   id: string
   text: string
-  options: string[] | Record<string, any>
+  options: Array<string | OptionObject>
 }
 
 type OptionObject = {
   label?: string
   value?: string
-  [key: string]: any
+  [key: string]: string | undefined
 }
 
 export default function SurveyPage() {
@@ -52,17 +57,17 @@ export default function SurveyPage() {
         console.error('Error fetching questions:', error)
         setError(`Failed to load survey questions: ${error.message || 'Database connection error'}`)
       } else {
-        const formatted = data.map((q: any, index: number) => {
+        const formatted = (data as DBQuestion[]).map((q, index: number) => {
           // Process options to ensure they're always strings
           let processedOptions = q.options;
           if (Array.isArray(q.options)) {
-            processedOptions = q.options.map((opt: any) => 
+            processedOptions = q.options.map((opt) => 
               typeof opt === 'object' && opt !== null 
                 ? ((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt)) 
                 : String(opt)
             );
           } else if (typeof q.options === 'object' && q.options !== null) {
-            processedOptions = Object.values(q.options).map((opt: any) => 
+            processedOptions = Object.values(q.options).map((opt) => 
               typeof opt === 'object' && opt !== null 
                 ? ((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt)) 
                 : String(opt)
@@ -94,7 +99,7 @@ export default function SurveyPage() {
     setSelectedQuestionIds(prev => {
       // If trying to add a new question but already at the limit, don't add
       if (!prev.includes(id) && prev.length >= MAX_QUESTIONS) {
-        setError(`You can only select up to ${MAX_QUESTIONS} questions per survey.`);
+        setError(`You can only select up to ${MAX_QUESTIONS} questions per survey.`)
         return prev;
       }
       
@@ -346,7 +351,7 @@ export default function SurveyPage() {
                 <div className="border rounded-lg p-6 max-h-[400px] overflow-y-auto space-y-4 mt-2 bg-white/50">
                   {selectedQuestionIds.length >= MAX_QUESTIONS && (
                     <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg mb-3">
-                      <p className="text-sm">You've selected the maximum of {MAX_QUESTIONS} questions.</p>
+                      <p className="text-sm">You&apos;ve selected the maximum of {MAX_QUESTIONS} questions.</p>
                     </div>
                   )}
                 
@@ -368,15 +373,19 @@ export default function SurveyPage() {
                           <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
                             {Array.isArray(question.options) 
                               ? question.options.map((opt, i) => (
-                                  <li key={i}>{typeof opt === 'object' && opt !== null 
-                                    ? ((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt)) 
-                                    : String(opt)}</li>
+                                  <li key={i}>{
+                                    typeof opt === 'object' && opt !== null 
+                                      ? String((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt))
+                                      : String(opt)
+                                  }</li>
                                 ))
                               : typeof question.options === 'object' && question.options !== null
                                 ? Object.values(question.options).map((value, i) => (
-                                    <li key={i}>{typeof value === 'object' && value !== null 
-                                      ? ((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value)) 
-                                      : String(value)}</li>
+                                    <li key={i}>{
+                                      typeof value === 'object' && value !== null 
+                                        ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
+                                        : String(value)
+                                    }</li>
                                   ))
                                 : <li>No options available</li>
                             }
@@ -483,9 +492,24 @@ export default function SurveyPage() {
                         <div>
                           <p className="font-medium text-gray-900">{q.text}</p>
                           <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
-                            {Array.isArray(q.options) && q.options.map((opt, i) => (
-                              <li key={i}>{opt}</li>
-                            ))}
+                            {Array.isArray(q.options) 
+                              ? q.options.map((opt, i) => (
+                                  <li key={i}>{
+                                    typeof opt === 'object' && opt !== null 
+                                      ? String((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt))
+                                      : String(opt)
+                                  }</li>
+                                ))
+                              : typeof q.options === 'object' && q.options !== null
+                                ? Object.values(q.options).map((value, i) => (
+                                    <li key={i}>{
+                                      typeof value === 'object' && value !== null 
+                                        ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
+                                        : String(value)
+                                    }</li>
+                                  ))
+                                : <li>No options available</li>
+                            }
                           </ul>
                         </div>
                         <Button 
@@ -528,15 +552,19 @@ export default function SurveyPage() {
                         <ul className="list-disc ml-6 text-sm text-gray-600 mt-2">
                           {Array.isArray(q.options) 
                             ? q.options.map((o, i) => (
-                                <li key={i}>{typeof o === 'object' && o !== null 
-                                  ? ((o as OptionObject).label || (o as OptionObject).value || JSON.stringify(o)) 
-                                  : String(o)}</li>
+                                <li key={i}>{
+                                  typeof o === 'object' && o !== null 
+                                    ? String((o as OptionObject).label || (o as OptionObject).value || JSON.stringify(o))
+                                    : String(o)
+                                }</li>
                               ))
                             : typeof q.options === 'object' && q.options !== null
                               ? Object.values(q.options).map((value, i) => (
-                                  <li key={i}>{typeof value === 'object' && value !== null 
-                                    ? ((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value)) 
-                                    : String(value)}</li>
+                                  <li key={i}>{
+                                    typeof value === 'object' && value !== null 
+                                      ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
+                                      : String(value)
+                                  }</li>
                                 ))
                               : <li>No options available</li>
                           }
