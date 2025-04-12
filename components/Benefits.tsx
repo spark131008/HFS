@@ -33,10 +33,10 @@ export default function Benefits() {
   ];
 
   return (
-    <section id="benefits" className="py-20 bg-gray-50">
+    <section id="benefits" className="py-20 bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl font-bold font-display tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
             Why Choose Our Solution
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -48,7 +48,7 @@ export default function Benefits() {
           {benefits.map((benefit, index) => (
             <div 
               key={index} 
-              className="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-lg transition-shadow"
+              className="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-xl transition-shadow bg-gradient-to-br from-white to-indigo-50/30"
             >
               <div className="text-4xl mb-4">{benefit.icon}</div>
               <h3 className="text-xl font-semibold mb-3 text-gray-900">{benefit.title}</h3>
@@ -60,7 +60,7 @@ export default function Benefits() {
         <div className="mt-16 text-center">
           <a 
             href="#contact" 
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            className="inline-block bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg"
           >
             Start Your Journey Today
           </a>

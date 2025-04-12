@@ -74,7 +74,7 @@ export default function MainNavigationBar() {
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center">
-          <Link href="/" className="text-xl font-bold text-blue-600">
+          <Link href="/" className="text-xl font-bold font-display bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
             HFS
           </Link>
         </div>
@@ -82,10 +82,10 @@ export default function MainNavigationBar() {
         <nav className="hidden md:flex items-center space-x-6">
           {isHomePage && !isLoggedIn && (
             <>
-              <Link href="#benefits" className="text-gray-600 hover:text-blue-600 transition-colors">
+              <Link href="#benefits" className="text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
                 Benefits
               </Link>
-              <Link href="#how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">
+              <Link href="#how-it-works" className="text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
                 How It Works
               </Link>
             </>
@@ -97,7 +97,7 @@ export default function MainNavigationBar() {
                 My Surveys
               </Link>
               <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white">
                   {user?.avatar ? (
                     <Image 
                       src={user.avatar} 
@@ -112,7 +112,7 @@ export default function MainNavigationBar() {
                 </div>
                 <span className="text-sm font-medium">{user?.name || user?.email?.split('@')[0]}</span>
               </div>
-              <Button variant="ghost" onClick={handleLogout}>
+              <Button variant="ghost" className="hover:text-indigo-600" onClick={handleLogout}>
                 Logout
               </Button>
             </div>
@@ -137,7 +137,7 @@ export default function MainNavigationBar() {
         </nav>
         
         {/* Mobile menu button - in a real app, this would toggle a mobile menu */}
-        <button className="md:hidden p-2">
+        <button className="md:hidden p-2 text-indigo-600">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
