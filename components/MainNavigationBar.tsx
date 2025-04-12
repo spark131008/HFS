@@ -93,7 +93,7 @@ export default function MainNavigationBar() {
           
           {isLoggedIn ? (
             <div className="flex items-center space-x-4">
-              <Link href="/user" className="text-gray-600 hover:text-blue-600 transition-colors">
+              <Link href="/my-surveys" className="text-gray-600 hover:text-blue-600 transition-colors">
                 My Surveys
               </Link>
               <div className="flex items-center space-x-2">

@@ -16,7 +16,7 @@ export default function Login() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.push('/user');
+        router.push('/my-surveys');
       }
     };
     
