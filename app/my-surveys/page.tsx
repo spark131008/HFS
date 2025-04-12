@@ -14,7 +14,7 @@ interface Survey {
   active: boolean; // Added active property
 }
 
-export default async function UserPage() {
+export default async function MySurveysPage() {
   const supabase = await createClient();
   
   // Check authentication
