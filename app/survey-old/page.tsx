@@ -25,7 +25,7 @@ interface CustomChangeEvent {
   };
 }
 
-export default function SurveyPage() {
+export default function SurveyOldPage() {
   const router = useRouter();
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
