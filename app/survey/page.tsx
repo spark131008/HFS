@@ -163,16 +163,18 @@ export default function Home() {
       setSwipeDirection(null);
     };
     
+    // Add event listeners
     element.addEventListener('touchstart', touchStart);
     element.addEventListener('touchmove', touchMove);
     element.addEventListener('touchend', touchEnd);
     
     return () => {
+      // Clean up event listeners
       element.removeEventListener('touchstart', touchStart);
       element.removeEventListener('touchmove', touchMove);
       element.removeEventListener('touchend', touchEnd);
     };
-  }, [showQuestions, finished, isSwiping]);
+  }, [showQuestions, finished, isSwiping, questionIndex, handleAnswer]); // Added questionIndex and handleAnswer to dependency array
   
   // Get swipe direction indicator styles
   const getSwipeIndicatorStyles = () => {
@@ -360,7 +362,7 @@ export default function Home() {
               <h2 style={{ 
                 fontSize: '24px',
                 fontWeight: 600,
-                marginBottom: '10px',
+                marginBottom: '24px', // Increased margin to create more space
                 color: '#fff',
                 fontFamily: 'Georgia, serif',
                 lineHeight: 1.4
@@ -368,74 +370,68 @@ export default function Home() {
                 {questions[questionIndex]}
               </h2>
               
-              <p style={{ 
-                fontSize: '16px',
-                color: '#aaaaaa',
-                marginBottom: '30px',
-                fontWeight: 400
-              }}>
-                <span style={{ fontStyle: 'italic' }}>Swipe left or right to answer</span>
-              </p>
-              
-              {/* Desktop buttons */}
+              {/* Buttons shown on all devices but only clickable on desktop */}
               <div style={{ 
                 display: 'flex',
                 gap: '20px',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                marginBottom: '20px'
               }}>
                 <button 
-                  onClick={() => handleAnswer('left')}
+                  onClick={windowWidth >= 768 ? () => handleAnswer('left') : undefined}
                   style={{ 
                     padding: '14px 28px', 
-                    cursor: 'pointer',
+                    cursor: windowWidth >= 768 ? 'pointer' : 'default',
                     background: 'transparent',
                     border: '2px solid #ffffff',
                     borderRadius: '50px',
-                    color: '#ffffff',
+                    color: windowWidth >= 768 ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
                     fontWeight: 600,
                     fontSize: '14px',
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
                     transition: 'all 0.25s ease',
                     flex: 1,
-                    maxWidth: '150px'
+                    maxWidth: '150px',
+                    opacity: windowWidth >= 768 ? 1 : 0.7
                   }}
-                  onMouseEnter={e => {
+                  onMouseEnter={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = '#ffffff';
                     e.currentTarget.style.color = '#000000';
-                  }}
-                  onMouseLeave={e => {
+                  } : undefined}
+                  onMouseLeave={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = '#ffffff';
-                  }}
+                  } : undefined}
                 >
                   Left
                 </button>
                 <button 
-                  onClick={() => handleAnswer('right')}
+                  onClick={windowWidth >= 768 ? () => handleAnswer('right') : undefined}
                   style={{ 
                     padding: '14px 28px', 
-                    cursor: 'pointer',
+                    cursor: windowWidth >= 768 ? 'pointer' : 'default',
                     background: 'transparent',
                     border: '2px solid #ffffff',
                     borderRadius: '50px',
-                    color: '#ffffff',
+                    color: windowWidth >= 768 ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
                     fontWeight: 600,
                     fontSize: '14px',
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
                     transition: 'all 0.25s ease',
                     flex: 1,
-                    maxWidth: '150px'
+                    maxWidth: '150px',
+                    opacity: windowWidth >= 768 ? 1 : 0.7
                   }}
-                  onMouseEnter={e => {
+                  onMouseEnter={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = '#ffffff';
                     e.currentTarget.style.color = '#000000';
-                  }}
-                  onMouseLeave={e => {
+                  } : undefined}
+                  onMouseLeave={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = '#ffffff';
-                  }}
+                  } : undefined}
                 >
                   Right
                 </button>
