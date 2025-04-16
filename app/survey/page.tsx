@@ -24,6 +24,22 @@ export default function Home() {
   const touchEndX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // For responsive design
+  const [windowWidth, setWindowWidth] = useState(0);
+  
+  // Set up window width measurement
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    // Initialize on mount
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
 
@@ -47,16 +63,24 @@ export default function Home() {
   };
 
   // Handle an answer ("swipe" left or right)
-  const handleAnswer = (direction: 'left' | 'right') => {
+  const handleAnswer = (direction: string) => {
+    // Save the answer
     setAnswers(prev => [...prev, direction]);
     console.log(answers)
+    
+    // Debug the current question and next step
+    console.log(`Question ${questionIndex + 1}/${questions.length} answered: ${direction}`);
+    
+    // Check if we have more questions
     if (questionIndex < questions.length - 1) {
-      setQuestionIndex(questionIndex + 1);
+      // Move to the next question
+      console.log(`Moving to question ${questionIndex + 2}`);
+      setQuestionIndex(prevIndex => prevIndex + 1);
     } else {
-      // Make sure we properly set finished state to true when completing the last question
+      // We've completed all questions, show the final screen
+      console.log('All questions completed, showing fortune');
       setShowQuestions(false);
       setFinished(true);
-      console.log('Survey completed, showing final image:', finished);
     }
   };
   
@@ -174,6 +198,7 @@ export default function Home() {
       style={{
         background: '#000000',
         minHeight: '100vh',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -181,7 +206,8 @@ export default function Home() {
         color: '#ffffff',
         textAlign: 'center',
         padding: '20px',
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+        boxSizing: 'border-box'
       }}
     >
       {/* Main container */}
@@ -195,9 +221,11 @@ export default function Home() {
           overflow: 'hidden',
           background: '#000000',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-          padding: finished ? '40px' : '60px 40px',
+          padding: finished ? '40px' : windowWidth < 768 ? '30px 20px' : '60px 40px',
           transition: 'all 0.4s ease',
-          touchAction: showQuestions && !finished ? 'pan-y' : 'auto'
+          touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
+          display: 'flex',
+          flexDirection: 'column'
         }}
         onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
         onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
@@ -221,7 +249,7 @@ export default function Home() {
             <div style={{ 
               position: 'relative', 
               width: '100%', 
-              height: '350px',
+              height: windowWidth < 768 ? '250px' : '350px',
               overflow: 'hidden',
               display: 'flex',
               justifyContent: 'center',
@@ -230,8 +258,8 @@ export default function Home() {
               <Image
                 src={getCurrentImage()}
                 alt="Fortune Cookie"
-                width={350}
-                height={350}
+                width={windowWidth < 768 ? 250 : 350}
+                height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -246,9 +274,9 @@ export default function Home() {
               margin: '0 auto'
             }}>
               <h2 style={{ 
-                fontSize: '32px',
+                fontSize: windowWidth < 768 ? '28px' : '32px',
                 fontWeight: 700,
-                marginBottom: '24px',
+                marginBottom: windowWidth < 768 ? '16px' : '24px',
                 color: '#fff',
                 lineHeight: 1.2,
                 fontFamily: 'Georgia, serif'
@@ -257,10 +285,10 @@ export default function Home() {
               </h2>
               
               <p style={{
-                fontSize: '16px',
+                fontSize: windowWidth < 768 ? '14px' : '16px',
                 lineHeight: 1.6,
                 color: '#cccccc',
-                marginBottom: '30px'
+                marginBottom: windowWidth < 768 ? '20px' : '30px'
               }}>
                 Take a moment to reflect on your journey while we prepare your personalized wisdom.
               </p>
@@ -307,7 +335,7 @@ export default function Home() {
             <div style={{ 
               position: 'relative', 
               width: '100%', 
-              height: '350px',
+              height: windowWidth < 768 ? '250px' : '350px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center'
@@ -315,8 +343,8 @@ export default function Home() {
               <Image
                 src={getCurrentImage()}
                 alt="Fortune Cookie"
-                width={350} 
-                height={350}
+                width={windowWidth < 768 ? 250 : 350} 
+                height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -449,7 +477,7 @@ export default function Home() {
             <div style={{ 
               position: 'relative', 
               width: '100%',
-              height: '350px',
+              height: windowWidth < 768 ? '250px' : '350px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center'
@@ -457,8 +485,8 @@ export default function Home() {
               <Image
                 src="/survey/4.png"
                 alt="Fortune Cookie"
-                width={350}
-                height={350}
+                width={windowWidth < 768 ? 250 : 350}
+                height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s ease',
@@ -470,9 +498,9 @@ export default function Home() {
             
             <div>
               <h2 style={{ 
-                fontSize: '28px',
+                fontSize: windowWidth < 768 ? '24px' : '28px',
                 fontWeight: 700,
-                marginBottom: '30px',
+                marginBottom: windowWidth < 768 ? '20px' : '30px',
                 color: '#fff',
                 fontFamily: 'Georgia, serif'
               }}>
@@ -482,8 +510,8 @@ export default function Home() {
               {/* Fortune slip */}
               <div style={{
                 position: 'relative',
-                margin: '40px auto',
-                padding: '30px',
+                margin: windowWidth < 768 ? '15px auto' : '40px auto',
+                padding: windowWidth < 768 ? '20px' : '30px',
                 background: '#fff',
                 border: 'none',
                 maxWidth: '400px',
