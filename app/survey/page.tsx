@@ -48,6 +48,8 @@ export default function Home() {
 
   // Handle an answer ("swipe" left or right)
   const handleAnswer = (direction: 'left' | 'right') => {
+    setAnswers(prev => [...prev, direction]);
+    console.log(answers)
     if (questionIndex < questions.length - 1) {
       setQuestionIndex(questionIndex + 1);
     } else {
