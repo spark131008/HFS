@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 
 export default function Home() {
@@ -16,6 +16,7 @@ export default function Home() {
   const [showQuestions, setShowQuestions] = useState(false);
   const [finished, setFinished] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false); // Add state to prevent multiple rapid answers
   
   // For swipe gestures
   const [isSwiping, setIsSwiping] = useState(false);
@@ -23,6 +24,22 @@ export default function Home() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // For responsive design
+  const [windowWidth, setWindowWidth] = useState(0);
+  
+  // Set up window width measurement
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    // Initialize on mount
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
@@ -47,18 +64,45 @@ export default function Home() {
   };
 
   // Handle an answer ("swipe" left or right)
-  const handleAnswer = (direction: 'left' | 'right') => {
-    setAnswers(prev => [...prev, direction]);
-    console.log(answers)
-    if (questionIndex < questions.length - 1) {
-      setQuestionIndex(questionIndex + 1);
-    } else {
-      // Make sure we properly set finished state to true when completing the last question
-      setShowQuestions(false);
-      setFinished(true);
-      console.log('Survey completed, showing final image:', finished);
+  const handleAnswer = useCallback((direction: string) => {
+    if (isProcessingAnswer) {
+      console.log('Already processing an answer, ignoring this one');
+      return; // Prevent multiple rapid answers
     }
-  };
+    
+    setIsProcessingAnswer(true); // Set processing state
+    
+    // Debug the current question and next step
+    console.log(`Question ${questionIndex + 1}/${questions.length} answered: ${direction}`);
+    
+    // Save the answer
+    setAnswers(prev => {
+      console.log('Previous answers:', prev);
+      return [...prev, direction];
+    });
+    console.log('Updated answers:', [...answers, direction]);
+    
+    // Use setTimeout to ensure state updates have time to complete
+    setTimeout(() => {
+      // Check if we have more questions
+      if (questionIndex < questions.length - 1) {
+        // Move to the next question
+        console.log(`Moving to question ${questionIndex + 2}`);
+        setQuestionIndex(prevIndex => prevIndex + 1);
+        
+        // Reset processing state after a short delay to prevent double-triggers
+        setTimeout(() => {
+          setIsProcessingAnswer(false);
+        }, 300);
+      } else {
+        // We've completed all questions, show the final screen
+        console.log('All questions completed, showing fortune');
+        setShowQuestions(false);
+        setFinished(true);
+        setIsProcessingAnswer(false);
+      }
+    }, 100);
+  }, [questionIndex, questions.length, isProcessingAnswer]);
   
   // Swipe detection handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -139,16 +183,18 @@ export default function Home() {
       setSwipeDirection(null);
     };
     
+    // Add event listeners
     element.addEventListener('touchstart', touchStart);
     element.addEventListener('touchmove', touchMove);
     element.addEventListener('touchend', touchEnd);
     
     return () => {
+      // Clean up event listeners
       element.removeEventListener('touchstart', touchStart);
       element.removeEventListener('touchmove', touchMove);
       element.removeEventListener('touchend', touchEnd);
     };
-  }, [showQuestions, finished, isSwiping]);
+  }, [showQuestions, finished, isSwiping, questionIndex, handleAnswer]); // Added questionIndex and handleAnswer to dependency array
   
   // Get swipe direction indicator styles
   const getSwipeIndicatorStyles = () => {
@@ -173,15 +219,24 @@ export default function Home() {
     <div 
       style={{
         background: '#000000',
-        minHeight: '100vh',
+        height: '100vh', // Fixed height to viewport height
+        maxHeight: '100vh', // Ensure it doesn't exceed viewport
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: windowWidth < 768 ? 'flex-start' : 'center',
         color: '#ffffff',
         textAlign: 'center',
-        padding: '20px',
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+        padding: windowWidth < 768 ? '10px 20px 60px' : '20px',
+        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+        boxSizing: 'border-box',
+        paddingTop: windowWidth < 768 ? '40px' : '20px',
+        overflow: 'hidden', // Prevent scrolling
+        position: 'fixed', // Fix position to viewport
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
       }}
     >
       {/* Main container */}
@@ -195,9 +250,11 @@ export default function Home() {
           overflow: 'hidden',
           background: '#000000',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-          padding: finished ? '40px' : '60px 40px',
+          padding: finished ? '40px' : windowWidth < 768 ? '30px 20px' : '60px 40px',
           transition: 'all 0.4s ease',
-          touchAction: showQuestions && !finished ? 'pan-y' : 'auto'
+          touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
+          display: 'flex',
+          flexDirection: 'column'
         }}
         onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
         onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
@@ -221,7 +278,7 @@ export default function Home() {
             <div style={{ 
               position: 'relative', 
               width: '100%', 
-              height: '350px',
+              height: windowWidth < 768 ? '250px' : '350px',
               overflow: 'hidden',
               display: 'flex',
               justifyContent: 'center',
@@ -230,8 +287,8 @@ export default function Home() {
               <Image
                 src={getCurrentImage()}
                 alt="Fortune Cookie"
-                width={350}
-                height={350}
+                width={windowWidth < 768 ? 250 : 350}
+                height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -246,9 +303,9 @@ export default function Home() {
               margin: '0 auto'
             }}>
               <h2 style={{ 
-                fontSize: '32px',
+                fontSize: windowWidth < 768 ? '28px' : '32px',
                 fontWeight: 700,
-                marginBottom: '24px',
+                marginBottom: windowWidth < 768 ? '16px' : '24px',
                 color: '#fff',
                 lineHeight: 1.2,
                 fontFamily: 'Georgia, serif'
@@ -257,10 +314,10 @@ export default function Home() {
               </h2>
               
               <p style={{
-                fontSize: '16px',
+                fontSize: windowWidth < 768 ? '14px' : '16px',
                 lineHeight: 1.6,
                 color: '#cccccc',
-                marginBottom: '30px'
+                marginBottom: windowWidth < 768 ? '20px' : '30px'
               }}>
                 Take a moment to reflect on your journey while we prepare your personalized wisdom.
               </p>
@@ -307,7 +364,7 @@ export default function Home() {
             <div style={{ 
               position: 'relative', 
               width: '100%', 
-              height: '350px',
+              height: windowWidth < 768 ? '250px' : '350px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center'
@@ -315,8 +372,8 @@ export default function Home() {
               <Image
                 src={getCurrentImage()}
                 alt="Fortune Cookie"
-                width={350} 
-                height={350}
+                width={windowWidth < 768 ? 250 : 350} 
+                height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -332,7 +389,7 @@ export default function Home() {
               <h2 style={{ 
                 fontSize: '24px',
                 fontWeight: 600,
-                marginBottom: '10px',
+                marginBottom: '24px', // Increased margin to create more space
                 color: '#fff',
                 fontFamily: 'Georgia, serif',
                 lineHeight: 1.4
@@ -340,74 +397,68 @@ export default function Home() {
                 {questions[questionIndex]}
               </h2>
               
-              <p style={{ 
-                fontSize: '16px',
-                color: '#aaaaaa',
-                marginBottom: '30px',
-                fontWeight: 400
-              }}>
-                <span style={{ fontStyle: 'italic' }}>Swipe left or right to answer</span>
-              </p>
-              
-              {/* Desktop buttons */}
+              {/* Buttons shown on all devices but only clickable on desktop */}
               <div style={{ 
                 display: 'flex',
                 gap: '20px',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                marginBottom: '20px'
               }}>
                 <button 
-                  onClick={() => handleAnswer('left')}
+                  onClick={windowWidth >= 768 ? () => handleAnswer('left') : undefined}
                   style={{ 
                     padding: '14px 28px', 
-                    cursor: 'pointer',
+                    cursor: windowWidth >= 768 ? 'pointer' : 'default',
                     background: 'transparent',
                     border: '2px solid #ffffff',
                     borderRadius: '50px',
-                    color: '#ffffff',
+                    color: windowWidth >= 768 ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
                     fontWeight: 600,
                     fontSize: '14px',
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
                     transition: 'all 0.25s ease',
                     flex: 1,
-                    maxWidth: '150px'
+                    maxWidth: '150px',
+                    opacity: windowWidth >= 768 ? 1 : 0.7
                   }}
-                  onMouseEnter={e => {
+                  onMouseEnter={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = '#ffffff';
                     e.currentTarget.style.color = '#000000';
-                  }}
-                  onMouseLeave={e => {
+                  } : undefined}
+                  onMouseLeave={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = '#ffffff';
-                  }}
+                  } : undefined}
                 >
                   Left
                 </button>
                 <button 
-                  onClick={() => handleAnswer('right')}
+                  onClick={windowWidth >= 768 ? () => handleAnswer('right') : undefined}
                   style={{ 
                     padding: '14px 28px', 
-                    cursor: 'pointer',
+                    cursor: windowWidth >= 768 ? 'pointer' : 'default',
                     background: 'transparent',
                     border: '2px solid #ffffff',
                     borderRadius: '50px',
-                    color: '#ffffff',
+                    color: windowWidth >= 768 ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
                     fontWeight: 600,
                     fontSize: '14px',
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
                     transition: 'all 0.25s ease',
                     flex: 1,
-                    maxWidth: '150px'
+                    maxWidth: '150px',
+                    opacity: windowWidth >= 768 ? 1 : 0.7
                   }}
-                  onMouseEnter={e => {
+                  onMouseEnter={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = '#ffffff';
                     e.currentTarget.style.color = '#000000';
-                  }}
-                  onMouseLeave={e => {
+                  } : undefined}
+                  onMouseLeave={windowWidth >= 768 ? e => {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = '#ffffff';
-                  }}
+                  } : undefined}
                 >
                   Right
                 </button>
@@ -449,7 +500,7 @@ export default function Home() {
             <div style={{ 
               position: 'relative', 
               width: '100%',
-              height: '350px',
+              height: windowWidth < 768 ? '250px' : '350px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center'
@@ -457,8 +508,8 @@ export default function Home() {
               <Image
                 src="/survey/4.png"
                 alt="Fortune Cookie"
-                width={350}
-                height={350}
+                width={windowWidth < 768 ? 250 : 350}
+                height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s ease',
@@ -470,9 +521,9 @@ export default function Home() {
             
             <div>
               <h2 style={{ 
-                fontSize: '28px',
+                fontSize: windowWidth < 768 ? '24px' : '28px',
                 fontWeight: 700,
-                marginBottom: '30px',
+                marginBottom: windowWidth < 768 ? '20px' : '30px',
                 color: '#fff',
                 fontFamily: 'Georgia, serif'
               }}>
@@ -482,8 +533,8 @@ export default function Home() {
               {/* Fortune slip */}
               <div style={{
                 position: 'relative',
-                margin: '40px auto',
-                padding: '30px',
+                margin: windowWidth < 768 ? '15px auto' : '40px auto',
+                padding: windowWidth < 768 ? '20px' : '30px',
                 background: '#fff',
                 border: 'none',
                 maxWidth: '400px',
