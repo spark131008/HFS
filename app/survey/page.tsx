@@ -219,18 +219,24 @@ export default function Home() {
     <div 
       style={{
         background: '#000000',
-        minHeight: '100vh',
-        height: '100%',
+        height: '100vh', // Fixed height to viewport height
+        maxHeight: '100vh', // Ensure it doesn't exceed viewport
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: windowWidth < 768 ? 'flex-start' : 'center', // Align to top on mobile
+        justifyContent: windowWidth < 768 ? 'flex-start' : 'center',
         color: '#ffffff',
         textAlign: 'center',
-        padding: windowWidth < 768 ? '20px 20px 70px' : '20px', // Added bottom padding on mobile
+        padding: windowWidth < 768 ? '10px 20px 60px' : '20px',
         fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
         boxSizing: 'border-box',
-        paddingTop: windowWidth < 768 ? '50px' : '20px' // Move content higher on mobile
+        paddingTop: windowWidth < 768 ? '40px' : '20px',
+        overflow: 'hidden', // Prevent scrolling
+        position: 'fixed', // Fix position to viewport
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
       }}
     >
       {/* Main container */}
