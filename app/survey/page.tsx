@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 
 export default function Home() {
@@ -16,6 +16,7 @@ export default function Home() {
   const [showQuestions, setShowQuestions] = useState(false);
   const [finished, setFinished] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false); // Add state to prevent multiple rapid answers
   
   // For swipe gestures
   const [isSwiping, setIsSwiping] = useState(false);
@@ -63,26 +64,45 @@ export default function Home() {
   };
 
   // Handle an answer ("swipe" left or right)
-  const handleAnswer = (direction: string) => {
-    // Save the answer
-    setAnswers(prev => [...prev, direction]);
-    console.log(answers)
+  const handleAnswer = useCallback((direction: string) => {
+    if (isProcessingAnswer) {
+      console.log('Already processing an answer, ignoring this one');
+      return; // Prevent multiple rapid answers
+    }
+    
+    setIsProcessingAnswer(true); // Set processing state
     
     // Debug the current question and next step
     console.log(`Question ${questionIndex + 1}/${questions.length} answered: ${direction}`);
     
-    // Check if we have more questions
-    if (questionIndex < questions.length - 1) {
-      // Move to the next question
-      console.log(`Moving to question ${questionIndex + 2}`);
-      setQuestionIndex(prevIndex => prevIndex + 1);
-    } else {
-      // We've completed all questions, show the final screen
-      console.log('All questions completed, showing fortune');
-      setShowQuestions(false);
-      setFinished(true);
-    }
-  };
+    // Save the answer
+    setAnswers(prev => {
+      console.log('Previous answers:', prev);
+      return [...prev, direction];
+    });
+    console.log('Updated answers:', [...answers, direction]);
+    
+    // Use setTimeout to ensure state updates have time to complete
+    setTimeout(() => {
+      // Check if we have more questions
+      if (questionIndex < questions.length - 1) {
+        // Move to the next question
+        console.log(`Moving to question ${questionIndex + 2}`);
+        setQuestionIndex(prevIndex => prevIndex + 1);
+        
+        // Reset processing state after a short delay to prevent double-triggers
+        setTimeout(() => {
+          setIsProcessingAnswer(false);
+        }, 300);
+      } else {
+        // We've completed all questions, show the final screen
+        console.log('All questions completed, showing fortune');
+        setShowQuestions(false);
+        setFinished(true);
+        setIsProcessingAnswer(false);
+      }
+    }, 100);
+  }, [questionIndex, questions.length, isProcessingAnswer]);
   
   // Swipe detection handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -204,12 +224,13 @@ export default function Home() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: windowWidth < 768 ? 'flex-start' : 'center', // Align to top on mobile
         color: '#ffffff',
         textAlign: 'center',
-        padding: '20px',
+        padding: windowWidth < 768 ? '20px 20px 70px' : '20px', // Added bottom padding on mobile
         fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        paddingTop: windowWidth < 768 ? '50px' : '20px' // Move content higher on mobile
       }}
     >
       {/* Main container */}
