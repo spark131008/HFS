@@ -9,18 +9,22 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // Get user data to check restaurant metadata
+      // Get authenticated user
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
-      // Determine redirect path based on restaurant metadata
+      // Determine redirect path based on restaurant data
       let redirectPath = '/onboarding'
       
       if (!userError && user) {
-        // Check if user already has restaurant info
-        const restaurantId = user.user_metadata?.restaurant_id
-        const restaurantName = user.user_metadata?.restaurant_name
+        // Query restaurants table to check if this user has a restaurant
+        const { data: restaurantData, error: restaurantError } = await supabase
+          .from('restaurants')
+          .select('id, name')
+          .eq('user_id', user.id)
+          .single();
         
-        if (restaurantId && restaurantName) {
+        // If restaurant exists with id and name, redirect to surveys page
+        if (!restaurantError && restaurantData && restaurantData.id && restaurantData.name) {
           redirectPath = '/my-surveys'
         }
       }

@@ -44,7 +44,7 @@ export async function generateQRCodeUrl(restaurantCode: string): Promise<string>
   
   // Get base URL and construct feedback URL
   const baseUrl = getBaseUrl();
-  const feedbackUrl = `${baseUrl}/feedback/${restaurantCode}`;
+  const feedbackUrl = `${baseUrl}/survey?code=${restaurantCode}`;
   
   // Generate QR code as data URL
   const qrDataUrl = await QRCode.toDataURL(feedbackUrl);
@@ -52,7 +52,7 @@ export async function generateQRCodeUrl(restaurantCode: string): Promise<string>
 }
 
 // Function to create a new restaurant
-export async function createRestaurant(name: string): Promise<{ success: boolean; error?: string; restaurantId?: number; restaurantCode?: string }> {
+export async function createRestaurant(name: string, userId: string): Promise<{ success: boolean; error?: string; restaurantId?: number; restaurantCode?: string }> {
   try {
     const supabase = createClient();
     
@@ -69,7 +69,8 @@ export async function createRestaurant(name: string): Promise<{ success: boolean
         {
           name,
           restaurant_code: restaurantCode,
-          qr_url: qrUrl
+          qr_url: qrUrl,
+          user_id: userId
         }
       ])
       .select('id')
@@ -89,4 +90,4 @@ export async function createRestaurant(name: string): Promise<{ success: boolean
       error: 'Failed to create restaurant'
     };
   }
-} 
+}
