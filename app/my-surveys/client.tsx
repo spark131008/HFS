@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import MainNavigationBar from "@/components/MainNavigationBar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { Plus, BarChart3, Clock, Users, CheckCircle, XCircle } from "lucide-react";
+import { Plus, BarChart3, Clock, Users, CheckCircle, XCircle, QrCode } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -190,12 +190,20 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
           {/* Create new survey button (always visible) */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-gray-800">All Surveys</h2>
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
-              <Link href="/survey-creation" className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                Create New Survey
-              </Link>
-            </Button>
+            <div className="flex gap-3">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
+                <Link href="/qr" className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5" />
+                  Show QR Code
+                </Link>
+              </Button>
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
+                <Link href="/survey-creation" className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Create New Survey
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {surveys && surveys.length > 0 ? (
