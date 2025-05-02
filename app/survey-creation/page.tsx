@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import MainNavigationBar from "@/components/MainNavigationBar";
+import { getUserRestaurantId } from "@/utils/user-utils";
 
 // Define database types
 type DBQuestion = {
@@ -62,23 +64,37 @@ export default function SurveyCreationPage() {
   const MAX_OPTIONS = 2;
   const MAX_QUESTIONS = 3;
 
-  // Check if user is authenticated
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+
+  // Check if user is authenticated and get restaurant ID
   useEffect(() => {
     const checkUser = async () => {
-      const supabase = createClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user) {
         // Redirect to login if no user
-        console.log('User not authenticated, redirecting to login')
-        router.push('/login')
+        console.log('User not authenticated, redirecting to login');
+        router.push('/login');
+        return;
       }
-    }
-    
-    checkUser()
-  }, [router])
 
-  const fetchQuestions = async () => {
+      // Get restaurant ID
+      const restId = await getUserRestaurantId();
+      if (!restId) {
+        console.log('No restaurant ID found, redirecting to onboarding');
+        router.push('/onboarding');
+        return;
+      }
+      setRestaurantId(restId);
+    };
+    
+    checkUser();
+  }, [router]);
+
+  // Function to fetch questions from the database
+  const fetchQuestions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
@@ -123,11 +139,11 @@ export default function SurveyCreationPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [setDbQuestions, setError, setIsLoading]);
 
   useEffect(() => {
     fetchQuestions()
-  }, [])
+  }, [fetchQuestions])
 
   const toggleQuestion = (id: string) => {
     setSelectedQuestionIds(prev => {
@@ -244,10 +260,90 @@ export default function SurveyCreationPage() {
   const allQuestions = [...dbQuestions, ...customQuestions]
   const selectedQuestions = allQuestions.filter(q => selectedQuestionIds.includes(q.id))
 
-  // Add saveSurveyToDatabase function before the return statement
+  // Add function to fetch restaurant QR code
+  const fetchRestaurantQRCode = useCallback(async () => {
+    if (!restaurantId) return;
+    
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('qr_url')
+        .eq('id', restaurantId)
+        .single();
+
+      if (error) throw error;
+      if (data?.qr_url) {
+        setQrCodeUrl(data.qr_url);
+      }
+    } catch (err) {
+      console.error('Error fetching QR code:', err);
+    }
+  }, [restaurantId, setQrCodeUrl]);
+
+  // Fetch QR code when component mounts and restaurantId is available
+  useEffect(() => {
+    if (restaurantId) {
+      fetchRestaurantQRCode();
+    }
+  }, [restaurantId, fetchRestaurantQRCode]);
+
+  // Add print function
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Restaurant QR Code</title>
+            <style>
+              body { 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+              }
+              img {
+                max-width: 500px;
+                width: 100%;
+                height: auto;
+              }
+              .container {
+                text-align: center;
+              }
+              h1 {
+                font-family: system-ui, -apple-system, sans-serif;
+                color: #333;
+                margin-bottom: 20px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Restaurant QR Code</h1>
+              <img src="${qrCodeUrl}" alt="Restaurant QR Code" />
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
+
+  // Modify saveSurveyToDatabase to remove modal logic
   const saveSurveyToDatabase = async () => {
     if (!surveyName.trim()) {
       setError('Please enter a survey name');
+      return;
+    }
+
+    if (!restaurantId) {
+      setError('Restaurant ID not found. Please complete onboarding first.');
       return;
     }
     
@@ -272,7 +368,8 @@ export default function SurveyCreationPage() {
           title: surveyName,
           location: location,
           updated_at: new Date().toISOString(),
-          status: status
+          status: status,
+          restaurant_id: restaurantId
         };
 
         console.log("Updating survey record:", JSON.stringify(surveyData, null, 2));
@@ -410,12 +507,13 @@ export default function SurveyCreationPage() {
           }
         }
         
+        await fetchRestaurantQRCode();
         setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
         
-        // Redirect back to my-surveys page after successful update
+        // Delay redirect to allow user to see success message
         setTimeout(() => {
           router.push('/my-surveys');
-        }, 2000);
+        }, 3000);
       } else {
         // We're creating a new survey (or updating an auto-saved one)
         
@@ -428,7 +526,8 @@ export default function SurveyCreationPage() {
             title: surveyName,
             location: location,
             updated_at: new Date().toISOString(),
-            status: status
+            status: status,
+            restaurant_id: restaurantId
           };
 
           console.log("Updating auto-saved survey record:", JSON.stringify(surveyData, null, 2));
@@ -496,6 +595,7 @@ export default function SurveyCreationPage() {
             console.log('No questions selected, updated auto-saved survey without questions');
           }
           
+          await fetchRestaurantQRCode();
           setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
           
           // Reset form after successful save
@@ -505,10 +605,10 @@ export default function SurveyCreationPage() {
           setCustomQuestions([]);
           setAutoSavedId(null); // Reset the auto-saved ID
           
-          // Redirect back to my-surveys page after successful update
+          // Delay redirect to allow user to see success message
           setTimeout(() => {
             router.push('/my-surveys');
-          }, 2000);
+          }, 3000);
         } else {
           // Create a completely new survey
           // Step 1: Create a new survey record in the survey table
@@ -516,7 +616,8 @@ export default function SurveyCreationPage() {
             title: surveyName,
             location: location,
             created_at: new Date().toISOString(),
-            status: status
+            status: status,
+            restaurant_id: restaurantId
           };
 
           console.log("Creating new survey record:", JSON.stringify(surveyData, null, 2));
@@ -579,6 +680,7 @@ export default function SurveyCreationPage() {
             console.log('No questions selected, created survey without questions (draft)');
           }
           
+          await fetchRestaurantQRCode();
           setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
           
           // Reset form after successful save
@@ -587,10 +689,10 @@ export default function SurveyCreationPage() {
           setSelectedQuestionIds([]);
           setCustomQuestions([]);
           
-          // Redirect back to my-surveys page after successful creation
+          // Delay redirect to allow user to see success message
           setTimeout(() => {
             router.push('/my-surveys');
-          }, 2000);
+          }, 3000);
         }
       }
     } catch (err) {
@@ -647,7 +749,8 @@ export default function SurveyCreationPage() {
           location: currentLocation, // Using the full location string
           updated_at: new Date().toISOString(),
           status: 'draft', // Always set to draft during auto-save
-          user_id: user.id // Add the user_id field
+          user_id: user.id, // Add the user_id field
+          restaurant_id: restaurantId
         };
         
         // Debug log the payload to ensure location is correct before sending
@@ -753,31 +856,8 @@ export default function SurveyCreationPage() {
     }, 1000);
   };
 
-  // Check for edit mode in URL parameters
-  useEffect(() => {
-    const checkForEditMode = async () => {
-      // Extract survey ID from URL if in edit mode
-      // In client-side navigation, we need to get the URL search params
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const editParam = urlParams.get('edit');
-        
-        if (editParam) {
-          setIsEditMode(true);
-          setEditSurveyId(editParam);
-          console.log('Edit mode detected, survey ID:', editParam);
-          
-          // Fetch the existing survey data
-          await fetchExistingSurvey(editParam);
-        }
-      }
-    };
-    
-    checkForEditMode();
-  }, []);
-  
   // Function to fetch existing survey data when in edit mode
-  const fetchExistingSurvey = async (surveyId: string) => {
+  const fetchExistingSurvey = useCallback(async (surveyId: string) => {
     setIsLoading(true);
     setError(null);
     
@@ -877,339 +957,394 @@ export default function SurveyCreationPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dbQuestions, fetchQuestions, setCustomQuestions, setError, setIsLoading, setLocation, setSelectedQuestionIds, setSurveyName]);
+
+  // Check for edit mode in URL parameters
+  useEffect(() => {
+    const checkForEditMode = async () => {
+      // Extract survey ID from URL if in edit mode
+      // In client-side navigation, we need to get the URL search params
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editParam = urlParams.get('edit');
+        
+        if (editParam) {
+          setIsEditMode(true);
+          setEditSurveyId(editParam);
+          console.log('Edit mode detected, survey ID:', editParam);
+          
+          // Fetch the existing survey data
+          await fetchExistingSurvey(editParam);
+        }
+      }
+    };
+    
+    checkForEditMode();
+  }, [fetchExistingSurvey]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-50 p-8">
-      <div className="container mx-auto max-w-7xl">
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold font-display tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-            {isEditMode ? 'Edit Survey' : 'Create Survey'}
-          </h1>
-          <p className="text-lg text-gray-600 font-normal">
-            {isEditMode 
-              ? 'Update your survey by modifying questions or selections' 
-              : 'Design your survey by selecting questions or adding custom ones'}
-          </p>
-        </div>
+    <div className="min-h-screen flex flex-col">
+      <MainNavigationBar />
+      <main className="flex-1 bg-gradient-to-b from-gray-100 to-gray-50 p-8">
+        <div className="container mx-auto max-w-7xl">
+          <div className="mb-12 text-center">
+            <h1 className="text-4xl font-bold font-display tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+              {isEditMode ? 'Edit Survey' : 'Create Survey'}
+            </h1>
+            <p className="text-lg text-gray-600 font-normal">
+              {isEditMode 
+                ? 'Update your survey by modifying questions or selections' 
+                : 'Design your survey by selecting questions or adding custom ones'}
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Form */}
-          <div>
-            <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
-              <CardContent className="space-y-6 p-8">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Error</p>
-                        <p>{error}</p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={fetchQuestions}
-                        disabled={isLoading}
-                        className="border-red-200 text-red-700 hover:bg-red-100"
-                      >
-                        {isLoading ? 'Retrying...' : 'Retry'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                {saveSuccess && (
-                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                    <p>{saveSuccess}</p>
-                  </div>
-                )}
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-lg font-semibold text-gray-700">Survey Name</Label>
-                    <Input
-                      value={surveyName}
-                      onChange={e => {
-                        setSurveyName(e.target.value);
-                        autoSaveSurvey(); // Trigger auto-save when name changes
-                      }}
-                      placeholder="Enter survey name"
-                      className="mt-2"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-semibold text-gray-700">Location</Label>
-                    <div className="relative">
-                    <Input
-                      value={location}
-                      onChange={e => {
-                        const newLocation = e.target.value;
-                        setLocation(newLocation);
-                        
-                        // Modify autoSaveSurvey to accept the current location value
-                        autoSaveSurvey(newLocation);
-                      }}
-                      placeholder="Enter location"
-                      className="mt-2"
-                    />
-                      {isAutoSaving && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-pulse text-blue-600 text-xs">Saving...</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Form */}
+            <div>
+              <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
+                <CardContent className="space-y-6 p-8">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Error</p>
+                          <p>{error}</p>
                         </div>
-                      )}
-                      {lastAutoSaved && !isAutoSaving && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="text-green-600 text-xs">Saved</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-semibold text-gray-700">Select Questions</Label>
-                    <div className="border rounded-lg p-6 max-h-[400px] overflow-y-auto space-y-4 mt-2 bg-white/50">
-                      {selectedQuestionIds.length >= MAX_QUESTIONS && (
-                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg mb-3">
-                          <p className="text-sm">You&apos;ve selected the maximum of {MAX_QUESTIONS} questions.</p>
-                        </div>
-                      )}
-                    
-                      {isLoading ? (
-                        <div className="text-center py-4 text-gray-500">Loading questions...</div>
-                      ) : allQuestions.length === 0 ? (
-                        <div className="text-center py-4 text-gray-500">No questions available</div>
-                      ) : (
-                        allQuestions.map(question => (
-                          <div key={question.id} className="flex items-start space-x-3 p-3 hover:bg-indigo-50/50 rounded-lg transition-colors">
-                            <Checkbox
-                              checked={selectedQuestionIds.includes(question.id)}
-                              onCheckedChange={() => toggleQuestion(question.id)}
-                              disabled={!selectedQuestionIds.includes(question.id) && selectedQuestionIds.length >= MAX_QUESTIONS}
-                              className="mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium text-gray-900">{question.text}</p>
-                                {question.id.startsWith('custom-') && (
-                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                                    Custom
-                                  </Badge>
-                                )}
-                              </div>
-                              <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
-                                {Array.isArray(question.options) 
-                                  ? question.options.map((opt, i) => (
-                                      <li key={i}>{
-                                        typeof opt === 'object' && opt !== null 
-                                          ? String((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt))
-                                          : String(opt)
-                                      }</li>
-                                    ))
-                                  : typeof question.options === 'object' && question.options !== null
-                                    ? Object.values(question.options).map((value, i) => (
-                                        <li key={i}>{
-                                          typeof value === 'object' && value !== null 
-                                            ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
-                                            : String(value)
-                                        }</li>
-                                      ))
-                                    : <li>No options available</li>
-                                }
-                              </ul>
-                            </div>
-                            {question.id.startsWith('custom-') && (
-                              <div className="flex gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => handleEditQuestion(question)}
-                                  className="text-indigo-600 hover:bg-indigo-50"
-                                >
-                                  Edit
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => handleDeleteQuestion(question.id)}
-                                  className="text-red-600 hover:bg-red-50"
-                                >
-                                  Delete
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 bg-purple-50/50 border border-purple-100 p-6 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-lg font-semibold text-gray-700">
-                        {isEditing ? 'Edit Custom Question' : 'Add Your Own Custom Question'}
-                      </h4>
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                        Custom
-                      </Badge>
-                    </div>
-                    <Input
-                      value={customQuestion}
-                      onChange={e => setCustomQuestion(e.target.value)}
-                      placeholder="Enter your question"
-                      className="mt-2"
-                    />
-                    
-                    <div className="space-y-2 mt-4">
-                      <div className="flex justify-between items-center">
-                        <Label className="font-medium text-gray-700">Options (exactly 2 required)</Label>
-                      </div>
-                      
-                      {customOptions.map((option, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <Input
-                            value={option}
-                            onChange={(e) => handleOptionChange(index, e.target.value)}
-                            placeholder={`Option ${index + 1}`}
-                            className="flex-1"
-                          />
-                          <Button 
-                            onClick={() => removeOption(index)}
-                            variant="outline" 
-                            size="sm"
-                            type="button"
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex gap-2 mt-4">
-                      <Button 
-                        onClick={handleAddCustomQuestion}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                      >
-                        {isEditing ? 'Update Question' : 'Add Question'}
-                      </Button>
-                      {isEditing && (
                         <Button 
-                          onClick={cancelEdit}
-                          variant="outline"
-                          className="text-gray-600"
+                          variant="outline" 
+                          size="sm" 
+                          onClick={fetchQuestions}
+                          disabled={isLoading}
+                          className="border-red-200 text-red-700 hover:bg-red-100"
                         >
-                          Cancel
+                          {isLoading ? 'Retrying...' : 'Retry'}
                         </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {customQuestions.length > 0 && (
-                    <div className="bg-white/50 p-6 rounded-lg">
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-lg font-semibold text-gray-700">Custom Questions</h4>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {customQuestions.map((q) => (
-                          <div key={q.id} className="flex justify-between items-start p-3 bg-white rounded-lg shadow-sm">
-                            <div>
-                              <p className="font-medium text-gray-900">{q.text}</p>
-                              <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
-                                {Array.isArray(q.options) 
-                                  ? q.options.map((opt, i) => (
-                                      <li key={i}>{
-                                        typeof opt === 'object' && opt !== null 
-                                          ? String((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt))
-                                          : String(opt)
-                                      }</li>
-                                    ))
-                                  : typeof q.options === 'object' && q.options !== null
-                                    ? Object.values(q.options).map((value, i) => (
-                                        <li key={i}>{
-                                          typeof value === 'object' && value !== null 
-                                            ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
-                                            : String(value)
-                                        }</li>
-                                      ))
-                                    : <li>No options available</li>
-                                }
-                              </ul>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   )}
                   
-                  <Button
-                    onClick={saveSurveyToDatabase}
-                    disabled={isSaving}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-6 rounded-xl font-medium text-lg shadow-lg transition-all duration-200 ease-in-out disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : 'Save Survey'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column - Preview */}
-          <div className="sticky top-8">
-            <Card className="border-none shadow-xl bg-gradient-to-br from-blue-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
-              <CardContent className="p-8">
-                <h3 className="text-2xl font-semibold text-gray-900 mb-6">Survey Preview</h3>
-                <div className="space-y-6">
-                  <div className="p-4 bg-white/50 rounded-lg">
-                    <p className="text-gray-700"><span className="font-semibold">Name:</span> {surveyName || 'Not set'}</p>
-                    <p className="text-gray-700"><span className="font-semibold">Location:</span> {location || 'Not set'}</p>
-                  </div>
+                  {saveSuccess && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                      <p>{saveSuccess}</p>
+                    </div>
+                  )}
                   
                   <div className="space-y-4">
-                    {selectedQuestions.length > 0 ? (
-                      selectedQuestions.map((q, index) => (
-                        <div key={q.id} className="p-4 bg-white rounded-lg shadow-sm">
-                          <div className="flex items-center gap-3 mb-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 text-sm font-semibold">
-                              Q{index + 1}
-                            </span>
-                            <p className="font-medium text-gray-900">{q.text}</p>
+                    <div>
+                      <Label className="text-lg font-semibold text-gray-700">Survey Name</Label>
+                      <Input
+                        value={surveyName}
+                        onChange={e => {
+                          setSurveyName(e.target.value);
+                          autoSaveSurvey(); // Trigger auto-save when name changes
+                        }}
+                        placeholder="Enter survey name"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-lg font-semibold text-gray-700">Location</Label>
+                      <div className="relative">
+                      <Input
+                        value={location}
+                        onChange={e => {
+                          const newLocation = e.target.value;
+                          setLocation(newLocation);
+                          
+                          // Modify autoSaveSurvey to accept the current location value
+                          autoSaveSurvey(newLocation);
+                        }}
+                        placeholder="Enter location"
+                        className="mt-2"
+                      />
+                        {isAutoSaving && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-pulse text-blue-600 text-xs">Saving...</div>
                           </div>
-                          <ul className="list-disc ml-6 text-sm text-gray-600">
-                            {Array.isArray(q.options) 
-                              ? q.options.map((o, i) => (
-                                  <li key={i}>{
-                                    typeof o === 'object' && o !== null 
-                                      ? String((o as OptionObject).label || (o as OptionObject).value || JSON.stringify(o))
-                                      : String(o)
-                                  }</li>
-                                ))
-                              : typeof q.options === 'object' && q.options !== null
-                                ? Object.values(q.options).map((value, i) => (
-                                    <li key={i}>{
-                                      typeof value === 'object' && value !== null 
-                                        ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
-                                        : String(value)
-                                    }</li>
-                                  ))
-                                : <li>No options available</li>
-                            }
-                          </ul>
+                        )}
+                        {lastAutoSaved && !isAutoSaving && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="text-green-600 text-xs">Saved</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-lg font-semibold text-gray-700">Select Questions</Label>
+                      <div className="border rounded-lg p-6 max-h-[400px] overflow-y-auto space-y-4 mt-2 bg-white/50">
+                        {selectedQuestionIds.length >= MAX_QUESTIONS && (
+                          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg mb-3">
+                            <p className="text-sm">You&apos;ve selected the maximum of {MAX_QUESTIONS} questions.</p>
+                          </div>
+                        )}
+                      
+                        {isLoading ? (
+                          <div className="text-center py-4 text-gray-500">Loading questions...</div>
+                        ) : allQuestions.length === 0 ? (
+                          <div className="text-center py-4 text-gray-500">No questions available</div>
+                        ) : (
+                          allQuestions.map(question => (
+                            <div key={question.id} className="flex items-start space-x-3 p-3 hover:bg-indigo-50/50 rounded-lg transition-colors">
+                              <Checkbox
+                                checked={selectedQuestionIds.includes(question.id)}
+                                onCheckedChange={() => toggleQuestion(question.id)}
+                                disabled={!selectedQuestionIds.includes(question.id) && selectedQuestionIds.length >= MAX_QUESTIONS}
+                                className="mt-1"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900">{question.text}</p>
+                                  {question.id.startsWith('custom-') && (
+                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                      Custom
+                                    </Badge>
+                                  )}
+                                </div>
+                                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                                  {Array.isArray(question.options) 
+                                    ? question.options.map((opt, i) => (
+                                        <li key={i}>{
+                                          typeof opt === 'object' && opt !== null 
+                                            ? String((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt))
+                                            : String(opt)
+                                        }</li>
+                                      ))
+                                    : typeof question.options === 'object' && question.options !== null
+                                      ? Object.values(question.options).map((value, i) => (
+                                          <li key={i}>{
+                                            typeof value === 'object' && value !== null 
+                                              ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
+                                              : String(value)
+                                          }</li>
+                                        ))
+                                      : <li>No options available</li>
+                                  }
+                                </ul>
+                              </div>
+                              {question.id.startsWith('custom-') && (
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => handleEditQuestion(question)}
+                                    className="text-indigo-600 hover:bg-indigo-50"
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => handleDeleteQuestion(question.id)}
+                                    className="text-red-600 hover:bg-red-50"
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 bg-purple-50/50 border border-purple-100 p-6 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-lg font-semibold text-gray-700">
+                          {isEditing ? 'Edit Custom Question' : 'Add Your Own Custom Question'}
+                        </h4>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                          Custom
+                        </Badge>
+                      </div>
+                      <Input
+                        value={customQuestion}
+                        onChange={e => setCustomQuestion(e.target.value)}
+                        placeholder="Enter your question"
+                        className="mt-2"
+                      />
+                      
+                      <div className="space-y-2 mt-4">
+                        <div className="flex justify-between items-center">
+                          <Label className="font-medium text-gray-700">Options (exactly 2 required)</Label>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        No questions selected yet
+                        
+                        {customOptions.map((option, index) => (
+                          <div key={index} className="flex gap-2 items-center">
+                            <Input
+                              value={option}
+                              onChange={(e) => handleOptionChange(index, e.target.value)}
+                              placeholder={`Option ${index + 1}`}
+                              className="flex-1"
+                            />
+                            <Button 
+                              onClick={() => removeOption(index)}
+                              variant="outline" 
+                              size="sm"
+                              type="button"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="flex gap-2 mt-4">
+                        <Button 
+                          onClick={handleAddCustomQuestion}
+                          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                        >
+                          {isEditing ? 'Update Question' : 'Add Question'}
+                        </Button>
+                        {isEditing && (
+                          <Button 
+                            onClick={cancelEdit}
+                            variant="outline"
+                            className="text-gray-600"
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {customQuestions.length > 0 && (
+                      <div className="bg-white/50 p-6 rounded-lg">
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="text-lg font-semibold text-gray-700">Custom Questions</h4>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {customQuestions.map((q) => (
+                            <div key={q.id} className="flex justify-between items-start p-3 bg-white rounded-lg shadow-sm">
+                              <div>
+                                <p className="font-medium text-gray-900">{q.text}</p>
+                                <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
+                                  {Array.isArray(q.options) 
+                                    ? q.options.map((opt, i) => (
+                                        <li key={i}>{
+                                          typeof opt === 'object' && opt !== null 
+                                            ? String((opt as OptionObject).label || (opt as OptionObject).value || JSON.stringify(opt))
+                                            : String(opt)
+                                        }</li>
+                                      ))
+                                    : typeof q.options === 'object' && q.options !== null
+                                      ? Object.values(q.options).map((value, i) => (
+                                          <li key={i}>{
+                                            typeof value === 'object' && value !== null 
+                                              ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
+                                              : String(value)
+                                          }</li>
+                                        ))
+                                      : <li>No options available</li>
+                                  }
+                                </ul>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+                    
+                    <Button
+                      onClick={saveSurveyToDatabase}
+                      disabled={isSaving}
+                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-6 rounded-xl font-medium text-lg shadow-lg transition-all duration-200 ease-in-out disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Survey'}
+                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Preview and QR Code */}
+            <div className="space-y-8">
+              {/* Survey Preview Card */}
+              <Card className="border-none shadow-xl bg-gradient-to-br from-blue-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
+                <CardContent className="p-8">
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-6">Survey Preview</h3>
+                  <div className="space-y-6">
+                    <div className="p-4 bg-white/50 rounded-lg">
+                      <p className="text-gray-700"><span className="font-semibold">Name:</span> {surveyName || 'Not set'}</p>
+                      <p className="text-gray-700"><span className="font-semibold">Location:</span> {location || 'Not set'}</p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {selectedQuestions.length > 0 ? (
+                        selectedQuestions.map((q, index) => (
+                          <div key={q.id} className="p-4 bg-white rounded-lg shadow-sm">
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 text-sm font-semibold">
+                                Q{index + 1}
+                              </span>
+                              <p className="font-medium text-gray-900">{q.text}</p>
+                            </div>
+                            <ul className="list-disc ml-6 text-sm text-gray-600">
+                              {Array.isArray(q.options) 
+                                ? q.options.map((o, i) => (
+                                    <li key={i}>{
+                                      typeof o === 'object' && o !== null 
+                                        ? String((o as OptionObject).label || (o as OptionObject).value || JSON.stringify(o))
+                                        : String(o)
+                                    }</li>
+                                  ))
+                                : typeof q.options === 'object' && q.options !== null
+                                  ? Object.values(q.options).map((value, i) => (
+                                      <li key={i}>{
+                                        typeof value === 'object' && value !== null 
+                                          ? String((value as OptionObject).label || (value as OptionObject).value || JSON.stringify(value))
+                                          : String(value)
+                                      }</li>
+                                    ))
+                                  : <li>No options available</li>
+                              }
+                            </ul>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No questions selected yet
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* QR Code Card */}
+              {qrCodeUrl && (
+                <Card className="border-none shadow-xl bg-gradient-to-br from-purple-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
+                  <CardContent className="p-8">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-2xl font-semibold text-gray-900">Restaurant QR Code</h3>
+                      <Button 
+                        onClick={handlePrint}
+                        variant="outline"
+                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                      >
+                        Print QR Code
+                      </Button>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="relative w-64 h-64">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          src={qrCodeUrl} 
+                          alt="Restaurant QR Code" 
+                          className="w-full h-full rounded-lg shadow-md"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   )
 }
