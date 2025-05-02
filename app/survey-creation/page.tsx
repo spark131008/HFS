@@ -66,6 +66,7 @@ export default function SurveyCreationPage() {
 
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [surveyStatus, setSurveyStatus] = useState<string>('draft');
 
   // Check if user is authenticated and get restaurant ID
   useEffect(() => {
@@ -356,7 +357,7 @@ export default function SurveyCreationPage() {
       
       // Check if survey has questions selected to determine status
       const isComplete = selectedQuestions.length >= MAX_QUESTIONS;
-      const status = isComplete ? 'active-ready' : 'draft';
+      const status = isComplete ? 'active' : 'draft';
       
       // Determine if we're creating a new survey or updating an existing one
       if (isEditMode && editSurveyId) {
@@ -884,9 +885,10 @@ export default function SurveyCreationPage() {
       
       console.log('Fetched survey data:', surveyData);
       
-      // Set survey title and location
+      // Set survey title, location, and status
       setSurveyName(surveyData.title || '');
       setLocation(surveyData.location || '');
+      setSurveyStatus(surveyData.status || 'draft');
       
       // 2. Next get the survey questions from survey_questions table
       try {
@@ -1315,7 +1317,7 @@ export default function SurveyCreationPage() {
               </Card>
 
               {/* QR Code Card */}
-              {qrCodeUrl && (
+              {qrCodeUrl && surveyStatus === 'active' && (
                 <Card className="border-none shadow-xl bg-gradient-to-br from-purple-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
                   <CardContent className="p-8">
                     <div className="flex justify-between items-center mb-6">

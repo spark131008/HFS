@@ -44,7 +44,7 @@ export async function generateQRCodeUrl(restaurantCode: string): Promise<string>
   
   // Get base URL and construct feedback URL
   const baseUrl = getBaseUrl();
-  const feedbackUrl = `${baseUrl}/feedback/${restaurantCode}`;
+  const feedbackUrl = `${baseUrl}/survey?code=${restaurantCode}`;
   
   // Generate QR code as data URL
   const qrDataUrl = await QRCode.toDataURL(feedbackUrl);
