@@ -1,11 +1,30 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#000000',
+        color: '#ffffff'
+      }}>
+        Loading...
+      </div>
+    }>
+      <SurveyContent />
+    </Suspense>
+  );
+}
+
+function SurveyContent() {
   // Get URL parameters
   const searchParams = useSearchParams();
   const restaurantCode = searchParams.get('code');
@@ -236,7 +255,7 @@ export default function Home() {
         setIsProcessingAnswer(false);
       }, 300);
     }
-  }, [questionIndex, questions.length, isProcessingAnswer, questions, answers, restaurantCode]);
+  }, [questionIndex, questions, answers, restaurantCode, isProcessingAnswer]);
   
   // Swipe detection handlers
   const handleTouchStart = (e: React.TouchEvent) => {
