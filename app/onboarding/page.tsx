@@ -27,22 +27,15 @@ export default function OnboardingPage() {
         }
 
         // Check if user already has restaurant info
-        const restaurantId = user.user_metadata?.restaurant_id;
-        const restaurantName = user.user_metadata?.restaurant_name;
+        const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('qr_url, restaurant_code')
+        .eq('user_id', user.id)
+        .single();
         
-        if (restaurantId && restaurantName) {
-          // Get the QR code URL
-          const { data: restaurant } = await supabase
-            .from('restaurants')
-            .select('qr_url, restaurant_code')
-            .eq('id', restaurantId)
-            .single();
-
-          if (restaurant?.qr_url) {
-            setRestaurantName(restaurantName);
-            setQrCode(restaurant.qr_url);
-            setRestaurantCode(restaurant.restaurant_code || null);
-          }
+        if (!restaurantError && restaurantData && restaurantData.qr_url && restaurantData.restaurant_code) {
+          setQrCode(restaurantData.qr_url);
+          setRestaurantCode(restaurantData.restaurant_code || null);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -69,24 +62,14 @@ export default function OnboardingPage() {
         throw new Error("You must be logged in to complete onboarding.");
       }
 
-      // Create restaurant entry
-      const { success, error: restaurantError, restaurantId, restaurantCode: code } = await createRestaurant(restaurantName.trim());
+      // Create restaurant entry - pass both restaurant name and user ID
+      const { success, error: restaurantError, restaurantId, restaurantCode: code } = await createRestaurant(
+        restaurantName.trim(),
+        user.id
+      );
       
       if (!success || !restaurantId) {
         throw new Error(restaurantError || "Failed to create restaurant");
-      }
-
-      // Update user_metadata with restaurant name and ID
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { 
-          ...user.user_metadata, 
-          restaurant_name: restaurantName,
-          restaurant_id: restaurantId
-        }
-      });
-
-      if (updateError) {
-        throw new Error("Failed to save restaurant information");
       }
 
       // Get the QR code URL

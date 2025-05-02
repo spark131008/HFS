@@ -11,13 +11,18 @@ export async function getUserRestaurantId(): Promise<number | null> {
     }
 
     // Get restaurant_id from user metadata
-    const restaurantId = user.user_metadata?.restaurant_id;
-    if (!restaurantId) {
+    const { data: restaurantData, error: restaurantError } = await supabase
+    .from('restaurants')
+    .select('id, name')
+    .eq('user_id', user.id)
+    .single();
+
+    if (!restaurantData || !restaurantData.id || restaurantError) {
       console.error('No restaurant_id found in user metadata');
       return null;
     }
 
-    return restaurantId;
+    return restaurantData.id;
   } catch (error) {
     console.error('Error getting user restaurant ID:', error);
     return null;
