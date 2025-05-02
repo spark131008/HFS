@@ -2,21 +2,29 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import { createClient } from '@/utils/supabase/client';
+import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
-  // Questions for the fortune cookie survey
-  const questions = [
-    'What brings you the most joy in life?',
-    'Where would you like to travel next?',
-    'What are you most grateful for today?'
-  ];
+  // Get URL parameters
+  const searchParams = useSearchParams();
+  const restaurantCode = searchParams.get('code');
+
+  // State for survey data
+  const [surveyTitle, setSurveyTitle] = useState<string>('');
+  const [surveyLocation, setSurveyLocation] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Questions state
+  const [questions, setQuestions] = useState<string[]>([]);
 
   // State to track which question we're on
   const [questionIndex, setQuestionIndex] = useState(0);
   const [showQuestions, setShowQuestions] = useState(false);
   const [finished, setFinished] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
-  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false); // Add state to prevent multiple rapid answers
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
   
   // For swipe gestures
   const [isSwiping, setIsSwiping] = useState(false);
@@ -44,6 +52,84 @@ export default function Home() {
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
 
+  // Fetch survey data on component mount
+  useEffect(() => {
+    const fetchSurveyData = async () => {
+      if (!restaurantCode) {
+        setError('Invalid QR code. Please scan again.');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+
+        // First verify the restaurant code
+        const { data: restaurant, error: restaurantError } = await supabase
+          .from('restaurants')
+          .select('id')
+          .eq('restaurant_code', restaurantCode)
+          .single();
+
+        if (restaurantError || !restaurant) {
+          setError('Restaurant not found. Please check the QR code.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Then fetch the active survey for this restaurant
+        const { data: surveys, error: surveyError } = await supabase
+          .from('survey')
+          .select(`
+            id,
+            title,
+            location,
+            survey_questions (
+              id,
+              question_text,
+              options,
+              position
+            )
+          `)
+          .eq('restaurant_id', restaurant.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (surveyError || !surveys) {
+          setError('No active survey found for this restaurant.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Sort questions by position if available
+        const sortedQuestions = surveys.survey_questions
+          .sort((a, b) => (a.position || 0) - (b.position || 0))
+          .map(q => q.question_text);
+
+        console.log('Fetched survey data:', {
+          title: surveys.title,
+          location: surveys.location,
+          questions: sortedQuestions
+        });
+
+        // Update state with survey data
+        setSurveyTitle(surveys.title);
+        setSurveyLocation(surveys.location);
+        setQuestions(sortedQuestions);
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching survey:', err);
+        setError('Failed to load survey. Please try again.');
+        setIsLoading(false);
+      }
+    };
+
+    fetchSurveyData();
+  }, [restaurantCode]);
+
   // Get the current image based on the question index
   const getCurrentImage = () => {
     if (!showQuestions) return "/survey/1.png"; // Initial screen
@@ -63,46 +149,94 @@ export default function Home() {
     setShowQuestions(true);
   };
 
-  // Handle an answer ("swipe" left or right)
-  const handleAnswer = useCallback((direction: string) => {
+  // Handle answer submission
+  const handleAnswer = useCallback(async (direction: string) => {
     if (isProcessingAnswer) {
       console.log('Already processing an answer, ignoring this one');
-      return; // Prevent multiple rapid answers
+      return;
     }
     
-    setIsProcessingAnswer(true); // Set processing state
+    setIsProcessingAnswer(true);
     
-    // Debug the current question and next step
-    console.log(`Question ${questionIndex + 1}/${questions.length} answered: ${direction}`);
-    
-    // Save the answer
-    setAnswers(prev => {
-      console.log('Previous answers:', prev);
-      return [...prev, direction];
-    });
-    console.log('Updated answers:', [...answers, direction]);
-    
-    // Use setTimeout to ensure state updates have time to complete
-    setTimeout(() => {
-      // Check if we have more questions
+    try {
+      // Save the answer to the database
+      const supabase = createClient();
+
+      // First get the restaurant ID and active survey ID from the code
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('restaurant_code', restaurantCode)
+        .single();
+
+      if (!restaurant) {
+        console.error('Restaurant not found');
+        return;
+      }
+
+      // Get the active survey ID
+      const { data: activeSurvey } = await supabase
+        .from('survey')
+        .select('id')
+        .eq('restaurant_id', restaurant.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!activeSurvey) {
+        console.error('Active survey not found');
+        return;
+      }
+
+      // Update local state with the new answer
+      const updatedAnswers = [...answers, direction];
+      setAnswers(updatedAnswers);
+
+      // Save all answers at once when survey is complete
+      if (questionIndex === questions.length - 1) {
+        console.log('Saving final answers:', {
+          questions,
+          answers: updatedAnswers,
+          questionAnswers: updatedAnswers.reduce<Record<string, string>>((acc, ans, idx) => {
+            acc[questions[idx]] = ans;
+            return acc;
+          }, {})
+        });
+
+        const { error: responseError } = await supabase
+          .from('survey_responses')
+          .insert([{
+            restaurant_id: restaurant.id,
+            survey_id: activeSurvey.id,
+            question_answers: updatedAnswers.reduce<Record<string, string>>((acc, ans, idx) => {
+              acc[questions[idx]] = ans;
+              return acc;
+            }, {}),
+            submitted_at: new Date().toISOString()
+          }]);
+
+        if (responseError) {
+          console.error('Error saving responses:', responseError);
+        }
+      }
+      
+      // Move to next question or finish
       if (questionIndex < questions.length - 1) {
-        // Move to the next question
-        console.log(`Moving to question ${questionIndex + 2}`);
         setQuestionIndex(prevIndex => prevIndex + 1);
-        
-        // Reset processing state after a short delay to prevent double-triggers
-        setTimeout(() => {
-          setIsProcessingAnswer(false);
-        }, 300);
       } else {
-        // We've completed all questions, show the final screen
-        console.log('All questions completed, showing fortune');
         setShowQuestions(false);
         setFinished(true);
-        setIsProcessingAnswer(false);
       }
-    }, 100);
-  }, [questionIndex, questions.length, isProcessingAnswer]);
+    } catch (err) {
+      console.error('Error processing answer:', err);
+    } finally {
+      // Reset processing state after a delay
+      setTimeout(() => {
+        setIsProcessingAnswer(false);
+      }, 300);
+    }
+  }, [questionIndex, questions.length, isProcessingAnswer, questions, answers, restaurantCode]);
   
   // Swipe detection handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -215,6 +349,40 @@ export default function Home() {
     };
   };
 
+  if (isLoading) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#000000',
+        color: '#ffffff'
+      }}>
+        Loading survey...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#000000',
+        color: '#ffffff',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ marginBottom: '20px' }}>Error</h2>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div 
       style={{
@@ -310,8 +478,18 @@ export default function Home() {
                 lineHeight: 1.2,
                 fontFamily: 'Georgia, serif'
               }}>
-                Discover Your Fortune
+                {surveyTitle}
               </h2>
+              
+              {surveyLocation && (
+                <p style={{
+                  fontSize: windowWidth < 768 ? '16px' : '18px',
+                  color: '#cccccc',
+                  marginBottom: '16px'
+                }}>
+                  {surveyLocation}
+                </p>
+              )}
               
               <p style={{
                 fontSize: windowWidth < 768 ? '14px' : '16px',
@@ -319,7 +497,7 @@ export default function Home() {
                 color: '#cccccc',
                 marginBottom: windowWidth < 768 ? '20px' : '30px'
               }}>
-                Take a moment to reflect on your journey while we prepare your personalized wisdom.
+                Take a moment to share your thoughts with us.
               </p>
               
               <button 
@@ -389,7 +567,7 @@ export default function Home() {
               <h2 style={{ 
                 fontSize: '24px',
                 fontWeight: 600,
-                marginBottom: '24px', // Increased margin to create more space
+                marginBottom: '24px',
                 color: '#fff',
                 fontFamily: 'Georgia, serif',
                 lineHeight: 1.4

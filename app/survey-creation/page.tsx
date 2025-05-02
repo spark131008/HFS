@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import MainNavigationBar from "@/components/MainNavigationBar";
+import { getUserRestaurantId } from "@/utils/user-utils";
 
 // Define database types
 type DBQuestion = {
@@ -63,23 +64,37 @@ export default function SurveyCreationPage() {
   const MAX_OPTIONS = 2;
   const MAX_QUESTIONS = 3;
 
-  // Check if user is authenticated
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+
+  // Check if user is authenticated and get restaurant ID
   useEffect(() => {
     const checkUser = async () => {
-      const supabase = createClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user) {
         // Redirect to login if no user
-        console.log('User not authenticated, redirecting to login')
-        router.push('/login')
+        console.log('User not authenticated, redirecting to login');
+        router.push('/login');
+        return;
       }
-    }
-    
-    checkUser()
-  }, [router])
 
-  const fetchQuestions = async () => {
+      // Get restaurant ID
+      const restId = await getUserRestaurantId();
+      if (!restId) {
+        console.log('No restaurant ID found, redirecting to onboarding');
+        router.push('/onboarding');
+        return;
+      }
+      setRestaurantId(restId);
+    };
+    
+    checkUser();
+  }, [router]);
+
+  // Function to fetch questions from the database
+  const fetchQuestions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
@@ -124,11 +139,11 @@ export default function SurveyCreationPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [setDbQuestions, setError, setIsLoading]);
 
   useEffect(() => {
     fetchQuestions()
-  }, [])
+  }, [fetchQuestions])
 
   const toggleQuestion = (id: string) => {
     setSelectedQuestionIds(prev => {
@@ -245,10 +260,90 @@ export default function SurveyCreationPage() {
   const allQuestions = [...dbQuestions, ...customQuestions]
   const selectedQuestions = allQuestions.filter(q => selectedQuestionIds.includes(q.id))
 
-  // Add saveSurveyToDatabase function before the return statement
+  // Add function to fetch restaurant QR code
+  const fetchRestaurantQRCode = useCallback(async () => {
+    if (!restaurantId) return;
+    
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('qr_url')
+        .eq('id', restaurantId)
+        .single();
+
+      if (error) throw error;
+      if (data?.qr_url) {
+        setQrCodeUrl(data.qr_url);
+      }
+    } catch (err) {
+      console.error('Error fetching QR code:', err);
+    }
+  }, [restaurantId, setQrCodeUrl]);
+
+  // Fetch QR code when component mounts and restaurantId is available
+  useEffect(() => {
+    if (restaurantId) {
+      fetchRestaurantQRCode();
+    }
+  }, [restaurantId, fetchRestaurantQRCode]);
+
+  // Add print function
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Restaurant QR Code</title>
+            <style>
+              body { 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+              }
+              img {
+                max-width: 500px;
+                width: 100%;
+                height: auto;
+              }
+              .container {
+                text-align: center;
+              }
+              h1 {
+                font-family: system-ui, -apple-system, sans-serif;
+                color: #333;
+                margin-bottom: 20px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Restaurant QR Code</h1>
+              <img src="${qrCodeUrl}" alt="Restaurant QR Code" />
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
+
+  // Modify saveSurveyToDatabase to remove modal logic
   const saveSurveyToDatabase = async () => {
     if (!surveyName.trim()) {
       setError('Please enter a survey name');
+      return;
+    }
+
+    if (!restaurantId) {
+      setError('Restaurant ID not found. Please complete onboarding first.');
       return;
     }
     
@@ -273,7 +368,8 @@ export default function SurveyCreationPage() {
           title: surveyName,
           location: location,
           updated_at: new Date().toISOString(),
-          status: status
+          status: status,
+          restaurant_id: restaurantId
         };
 
         console.log("Updating survey record:", JSON.stringify(surveyData, null, 2));
@@ -411,12 +507,13 @@ export default function SurveyCreationPage() {
           }
         }
         
+        await fetchRestaurantQRCode();
         setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
         
-        // Redirect back to my-surveys page after successful update
+        // Delay redirect to allow user to see success message
         setTimeout(() => {
           router.push('/my-surveys');
-        }, 2000);
+        }, 3000);
       } else {
         // We're creating a new survey (or updating an auto-saved one)
         
@@ -429,7 +526,8 @@ export default function SurveyCreationPage() {
             title: surveyName,
             location: location,
             updated_at: new Date().toISOString(),
-            status: status
+            status: status,
+            restaurant_id: restaurantId
           };
 
           console.log("Updating auto-saved survey record:", JSON.stringify(surveyData, null, 2));
@@ -497,6 +595,7 @@ export default function SurveyCreationPage() {
             console.log('No questions selected, updated auto-saved survey without questions');
           }
           
+          await fetchRestaurantQRCode();
           setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
           
           // Reset form after successful save
@@ -506,10 +605,10 @@ export default function SurveyCreationPage() {
           setCustomQuestions([]);
           setAutoSavedId(null); // Reset the auto-saved ID
           
-          // Redirect back to my-surveys page after successful update
+          // Delay redirect to allow user to see success message
           setTimeout(() => {
             router.push('/my-surveys');
-          }, 2000);
+          }, 3000);
         } else {
           // Create a completely new survey
           // Step 1: Create a new survey record in the survey table
@@ -517,7 +616,8 @@ export default function SurveyCreationPage() {
             title: surveyName,
             location: location,
             created_at: new Date().toISOString(),
-            status: status
+            status: status,
+            restaurant_id: restaurantId
           };
 
           console.log("Creating new survey record:", JSON.stringify(surveyData, null, 2));
@@ -580,6 +680,7 @@ export default function SurveyCreationPage() {
             console.log('No questions selected, created survey without questions (draft)');
           }
           
+          await fetchRestaurantQRCode();
           setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
           
           // Reset form after successful save
@@ -588,10 +689,10 @@ export default function SurveyCreationPage() {
           setSelectedQuestionIds([]);
           setCustomQuestions([]);
           
-          // Redirect back to my-surveys page after successful creation
+          // Delay redirect to allow user to see success message
           setTimeout(() => {
             router.push('/my-surveys');
-          }, 2000);
+          }, 3000);
         }
       }
     } catch (err) {
@@ -648,7 +749,8 @@ export default function SurveyCreationPage() {
           location: currentLocation, // Using the full location string
           updated_at: new Date().toISOString(),
           status: 'draft', // Always set to draft during auto-save
-          user_id: user.id // Add the user_id field
+          user_id: user.id, // Add the user_id field
+          restaurant_id: restaurantId
         };
         
         // Debug log the payload to ensure location is correct before sending
@@ -754,31 +856,8 @@ export default function SurveyCreationPage() {
     }, 1000);
   };
 
-  // Check for edit mode in URL parameters
-  useEffect(() => {
-    const checkForEditMode = async () => {
-      // Extract survey ID from URL if in edit mode
-      // In client-side navigation, we need to get the URL search params
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const editParam = urlParams.get('edit');
-        
-        if (editParam) {
-          setIsEditMode(true);
-          setEditSurveyId(editParam);
-          console.log('Edit mode detected, survey ID:', editParam);
-          
-          // Fetch the existing survey data
-          await fetchExistingSurvey(editParam);
-        }
-      }
-    };
-    
-    checkForEditMode();
-  }, []);
-  
   // Function to fetch existing survey data when in edit mode
-  const fetchExistingSurvey = async (surveyId: string) => {
+  const fetchExistingSurvey = useCallback(async (surveyId: string) => {
     setIsLoading(true);
     setError(null);
     
@@ -878,7 +957,30 @@ export default function SurveyCreationPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dbQuestions, fetchQuestions, setCustomQuestions, setError, setIsLoading, setLocation, setSelectedQuestionIds, setSurveyName]);
+
+  // Check for edit mode in URL parameters
+  useEffect(() => {
+    const checkForEditMode = async () => {
+      // Extract survey ID from URL if in edit mode
+      // In client-side navigation, we need to get the URL search params
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editParam = urlParams.get('edit');
+        
+        if (editParam) {
+          setIsEditMode(true);
+          setEditSurveyId(editParam);
+          console.log('Edit mode detected, survey ID:', editParam);
+          
+          // Fetch the existing survey data
+          await fetchExistingSurvey(editParam);
+        }
+      }
+    };
+    
+    checkForEditMode();
+  }, [fetchExistingSurvey]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -1158,8 +1260,9 @@ export default function SurveyCreationPage() {
               </Card>
             </div>
 
-            {/* Right Column - Preview */}
-            <div className="sticky top-8">
+            {/* Right Column - Preview and QR Code */}
+            <div className="space-y-8">
+              {/* Survey Preview Card */}
               <Card className="border-none shadow-xl bg-gradient-to-br from-blue-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
                 <CardContent className="p-8">
                   <h3 className="text-2xl font-semibold text-gray-900 mb-6">Survey Preview</h3>
@@ -1210,6 +1313,34 @@ export default function SurveyCreationPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* QR Code Card */}
+              {qrCodeUrl && (
+                <Card className="border-none shadow-xl bg-gradient-to-br from-purple-50/80 to-white/90 hover:shadow-2xl transition-shadow duration-300 rounded-2xl">
+                  <CardContent className="p-8">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-2xl font-semibold text-gray-900">Restaurant QR Code</h3>
+                      <Button 
+                        onClick={handlePrint}
+                        variant="outline"
+                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                      >
+                        Print QR Code
+                      </Button>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="relative w-64 h-64">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          src={qrCodeUrl} 
+                          alt="Restaurant QR Code" 
+                          className="w-full h-full rounded-lg shadow-md"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>
