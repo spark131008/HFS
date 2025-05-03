@@ -11,8 +11,6 @@ export default function OnboardingPage() {
   const [restaurantName, setRestaurantName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [restaurantCode, setRestaurantCode] = useState<string | null>(null);
   const router = useRouter();
 
   // Add effect to check for existing restaurant
@@ -34,8 +32,8 @@ export default function OnboardingPage() {
         .single();
         
         if (!restaurantError && restaurantData && restaurantData.qr_url && restaurantData.restaurant_code) {
-          setQrCode(restaurantData.qr_url);
-          setRestaurantCode(restaurantData.restaurant_code || null);
+          router.push("/qr");
+          return;
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -43,7 +41,7 @@ export default function OnboardingPage() {
     };
 
     checkExistingRestaurant();
-  }, []);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,114 +61,22 @@ export default function OnboardingPage() {
       }
 
       // Create restaurant entry - pass both restaurant name and user ID
-      const { success, error: restaurantError, restaurantId, restaurantCode: code } = await createRestaurant(
+      const { success, error: restaurantError } = await createRestaurant(
         restaurantName.trim(),
         user.id
       );
       
-      if (!success || !restaurantId) {
+      if (!success) {
         throw new Error(restaurantError || "Failed to create restaurant");
       }
 
-      // Get the QR code URL
-      const { data: restaurant } = await supabase
-        .from('restaurants')
-        .select('qr_url')
-        .eq('id', restaurantId)
-        .single();
-
-      if (restaurant?.qr_url) {
-        setQrCode(restaurant.qr_url);
-        setRestaurantCode(code || null);
-      }
-
-      setLoading(false);
+      // Navigate to QR page after successful creation
+      router.push("/qr");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setLoading(false);
     }
   };
-
-  const handleContinue = () => {
-    router.push("/my-surveys");
-  };
-
-  if (qrCode) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-100 to-gray-50 p-8">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-          <h1 className="text-3xl font-bold text-blue-600 mb-4 text-center">
-            {restaurantName}
-          </h1>
-          <p className="mb-6 text-gray-600 text-center">Your restaurant&apos;s QR code for customer feedback</p>
-          
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative w-64 h-64">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrCode} alt="Restaurant QR Code" className="w-full h-full" />
-            </div>
-            
-            {restaurantCode && (
-              <p className="text-sm text-gray-600">Restaurant Code: {restaurantCode}</p>
-            )}
-            
-            <div className="flex flex-col w-full space-y-3">
-              <Button onClick={() => {
-                const printWindow = window.open('', '_blank');
-                if (printWindow) {
-                  printWindow.document.write(`
-                    <html>
-                      <head>
-                        <title>${restaurantName} QR Code</title>
-                        <style>
-                          body { 
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            height: 100vh;
-                            margin: 0;
-                            padding: 20px;
-                          }
-                          img {
-                            max-width: 500px;
-                            width: 100%;
-                            height: auto;
-                          }
-                          .container {
-                            text-align: center;
-                          }
-                          h1 {
-                            font-family: system-ui, -apple-system, sans-serif;
-                            color: #333;
-                            margin-bottom: 20px;
-                          }
-                        </style>
-                      </head>
-                      <body>
-                        <div class="container">
-                          <h1>${restaurantName}</h1>
-                          <img src="${qrCode}" alt="Restaurant QR Code" />
-                        </div>
-                      </body>
-                    </html>
-                  `);
-                  printWindow.document.close();
-                  printWindow.focus();
-                  printWindow.print();
-                }
-              }} className="bg-blue-600 hover:bg-blue-700">
-                Print QR Code
-              </Button>
-              <Button onClick={handleContinue} variant="outline">
-                Continue to Dashboard
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-100 to-gray-50 p-8">
