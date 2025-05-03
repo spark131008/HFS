@@ -25,28 +25,28 @@ export default function QRCodePage() {
         }
 
         // Check if user has restaurant info
-        const restaurantId = user.user_metadata?.restaurant_id;
-        const restaurantName = user.user_metadata?.restaurant_name;
+        const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('qr_url, restaurant_code, name')
+        .eq('user_id', user.id)
+        .single();
         
-        if (!restaurantId || !restaurantName) {
+        if (restaurantError || !restaurantData) {
           router.push("/onboarding");
           return;
         }
-
-        // Get the QR code URL
-        const { data: restaurant } = await supabase
-          .from('restaurants')
-          .select('qr_url, restaurant_code')
-          .eq('id', restaurantId)
-          .single();
-
-        if (restaurant?.qr_url) {
-          setRestaurantName(restaurantName);
-          setQrCode(restaurant.qr_url);
-          setRestaurantCode(restaurant.restaurant_code || null);
-        } else {
-          setError("Could not find restaurant QR code");
+        if (restaurantData.qr_url) {
+          setQrCode(restaurantData.qr_url);
         }
+
+        if (restaurantData.restaurant_code) {
+          setRestaurantCode(restaurantData.restaurant_code);
+        }
+
+        if (restaurantData.name) {
+          setRestaurantName(restaurantData.name);
+        }
+        
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unexpected error occurred");
       }
