@@ -16,11 +16,22 @@ type User = {
 export default function MainNavigationBar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const isHomePage = pathname === "/";
   const isLoginPage = pathname === "/login";
   const supabase = createClient();
+
+  // Toggle mobile menu
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   // Check auth status using Supabase client
   useEffect(() => {
@@ -136,8 +147,12 @@ export default function MainNavigationBar() {
           )}
         </nav>
         
-        {/* Mobile menu button - in a real app, this would toggle a mobile menu */}
-        <button className="md:hidden p-2 text-indigo-600">
+        {/* Mobile menu button - now functional */}
+        <button 
+          className="md:hidden p-2 text-indigo-600 focus:outline-none"
+          onClick={toggleMobileMenu}
+          aria-label="Toggle mobile menu"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
@@ -149,11 +164,108 @@ export default function MainNavigationBar() {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
+              d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
             />
           </svg>
         </button>
       </div>
+
+      {/* Mobile menu dropdown */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-white border-t border-gray-100 shadow-lg animate-fadeIn">
+          <div className="container mx-auto px-4 py-3 space-y-4">
+            {isHomePage && !isLoggedIn && (
+              <div className="space-y-3">
+                <Link 
+                  href="#benefits" 
+                  className="block text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                  onClick={toggleMobileMenu}
+                >
+                  Benefits
+                </Link>
+                <Link 
+                  href="#how-it-works" 
+                  className="block text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                  onClick={toggleMobileMenu}
+                >
+                  How It Works
+                </Link>
+              </div>
+            )}
+            
+            {isLoggedIn ? (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 py-2">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white">
+                    {user?.avatar ? (
+                      <Image 
+                        src={user.avatar} 
+                        alt={user.name || 'User'} 
+                        width={32} 
+                        height={32} 
+                        className="rounded-full" 
+                      />
+                    ) : (
+                      <span>{user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}</span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium">{user?.name || user?.email?.split('@')[0]}</span>
+                </div>
+                <Link 
+                  href="/my-surveys" 
+                  className="block text-gray-600 hover:text-blue-600 transition-colors py-2"
+                  onClick={toggleMobileMenu}
+                >
+                  My Surveys
+                </Link>
+                <button 
+                  className="w-full text-left text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                  onClick={() => {
+                    toggleMobileMenu();
+                    handleLogout();
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {isLoginPage ? (
+                  // Add content for login page mobile menu
+                  <Link 
+                    href="/" 
+                    className="block text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                    onClick={toggleMobileMenu}
+                  >
+                    Back to Home
+                  </Link>
+                ) : (
+                  <>
+                    {!isLoginPage && (
+                      <Link 
+                        href="/login" 
+                        className="block text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                        onClick={toggleMobileMenu}
+                      >
+                        Sign up/Log in
+                      </Link>
+                    )}
+                    {pathname !== '/login' && (
+                      <Link 
+                        href="/login" 
+                        className="block bg-indigo-600 text-white px-4 py-2 rounded-md text-center"
+                        onClick={toggleMobileMenu}
+                      >
+                        Get Started
+                      </Link>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

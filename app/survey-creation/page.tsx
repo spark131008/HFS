@@ -44,7 +44,11 @@ export default function SurveyCreationPage() {
   const [customQuestions, setCustomQuestions] = useState<Question[]>([])
   const [dbQuestions, setDbQuestions] = useState<Question[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true) // General loading state
+  const [isFetchingQuestions, setIsFetchingQuestions] = useState(false) // Loading state for question bank
+  const [isFetchingExisting, setIsFetchingExisting] = useState(false) // Loading state for existing survey
+  const dbQuestionsRef = useRef<Question[]>([])
+  const hasLoadedSurveyRef = useRef<boolean>(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -96,7 +100,7 @@ export default function SurveyCreationPage() {
 
   // Function to fetch questions from the database
   const fetchQuestions = useCallback(async () => {
-    setIsLoading(true)
+    setIsFetchingQuestions(true)
     setError(null)
     try {
       const supabase = createClient()
@@ -138,29 +142,44 @@ export default function SurveyCreationPage() {
       console.error('Unexpected error:', err)
       setError('An unexpected error occurred. Please try again later.')
     } finally {
-      setIsLoading(false)
+      setIsFetchingQuestions(false)
+      setIsLoading(false) // Set the main loading state to false when questions are loaded
     }
-  }, [setDbQuestions, setError, setIsLoading]);
+  }, [setDbQuestions, setError, setIsLoading, setIsFetchingQuestions]);
 
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
 
+  useEffect(() => {
+    dbQuestionsRef.current = dbQuestions;
+  }, [dbQuestions]);
+
   const toggleQuestion = (id: string) => {
-    setSelectedQuestionIds(prev => {
-      // If trying to add a new question but already at the limit, don't add
-      if (!prev.includes(id) && prev.length >= MAX_QUESTIONS) {
+    const isCurrentlySelected = selectedQuestionIds.includes(id);
+    console.log(`Toggling question ${id}, currently selected: ${isCurrentlySelected}`);
+    
+    if (isCurrentlySelected) {
+      // If selected, remove it from the array
+      const newSelectedIds = selectedQuestionIds.filter(qId => qId !== id);
+      console.log('New selected IDs after removal:', newSelectedIds);
+      setSelectedQuestionIds(newSelectedIds);
+    } else {
+      // If not selected and not at max limit, add it
+      if (selectedQuestionIds.length < MAX_QUESTIONS) {
+        const newSelectedIds = [...selectedQuestionIds, id];
+        console.log('New selected IDs after addition:', newSelectedIds);
+        setSelectedQuestionIds(newSelectedIds);
+      } else {
+        console.log(`Can't add more questions, already at limit of ${MAX_QUESTIONS}`);
         setError(`You can only select up to ${MAX_QUESTIONS} questions per survey.`)
-        return prev;
       }
-      
-      // Clear error if removing a question or under the limit
-      if (error?.includes(`${MAX_QUESTIONS} questions`)) {
-        setError(null);
-      }
-      
-      return prev.includes(id) ? prev.filter(q => q !== id) : [...prev, id];
-    });
+    }
+    
+    // Clear error if needed
+    if (error?.includes(`${MAX_QUESTIONS} questions`)) {
+      setError(null);
+    }
   }
 
   const handleAddCustomQuestion = () => {
@@ -355,21 +374,33 @@ export default function SurveyCreationPage() {
     try {
       const supabase = createClient();
       
-      // Check if survey has questions selected to determine status
-      const isComplete = selectedQuestions.length >= MAX_QUESTIONS;
-      const status = isComplete ? 'active' : 'draft';
+      // Check if survey has enough questions selected to determine status
+      // If fewer than MAX_QUESTIONS, set to draft (this includes zero questions)
+      const hasEnoughQuestions = selectedQuestionIds.length >= MAX_QUESTIONS;
+      
+      // If in edit mode and current status is 'active' but not enough questions now,
+      // we need to downgrade to draft
+      let newStatus = surveyStatus;
+      if (!hasEnoughQuestions && newStatus === 'active') {
+        console.log(`Survey has ${selectedQuestionIds.length} questions which is fewer than required ${MAX_QUESTIONS}. Changing status from 'active' to 'draft'.`);
+        newStatus = 'draft';
+      } else if (hasEnoughQuestions && newStatus === 'draft') {
+        // If enough questions and currently draft, make it active-ready instead of active
+        console.log(`Survey has enough questions (${selectedQuestionIds.length}), updating from draft to active-ready.`);
+        newStatus = 'active-ready';
+      }
       
       // Determine if we're creating a new survey or updating an existing one
       if (isEditMode && editSurveyId) {
         // We're updating an existing survey
-        console.log(`Updating existing survey with ID: ${editSurveyId}, status: ${status}`);
+        console.log(`Updating existing survey with ID: ${editSurveyId}, status: ${newStatus}`);
         
         // Step 1: Update the survey record in the survey table
         const surveyData = {
           title: surveyName,
           location: location,
           updated_at: new Date().toISOString(),
-          status: status,
+          status: newStatus,
           restaurant_id: restaurantId
         };
 
@@ -455,7 +486,7 @@ export default function SurveyCreationPage() {
                 // For questions from question_bank, store a reference to the question_bank_id
                 // For custom questions, question_bank_id will be null
                 const questionId = question.id.startsWith('db-') 
-                  ? dbQuestions.find(q => q.id === question.id)?.id.replace('db-', '') 
+                  ? parseInt(question.id.replace('db-', ''), 10) 
                   : null;
                 
                 const { error: insertQError } = await supabase
@@ -509,7 +540,19 @@ export default function SurveyCreationPage() {
         }
         
         await fetchRestaurantQRCode();
-        setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
+        // Show appropriate success message based on question count
+        if (hasEnoughQuestions) {
+          if (newStatus === 'active') {
+            setSaveSuccess('Survey updated and is active!');
+          } else {
+            setSaveSuccess('Survey updated and saved as draft!');
+          }
+        } else {
+          setSaveSuccess('Survey updated and saved as draft! Add more questions to activate.');
+        }
+        
+        // Update the survey status state
+        setSurveyStatus(newStatus);
         
         // Delay redirect to allow user to see success message
         setTimeout(() => {
@@ -517,6 +560,9 @@ export default function SurveyCreationPage() {
         }, 3000);
       } else {
         // We're creating a new survey (or updating an auto-saved one)
+        
+        // For new surveys, determine status based on question count
+        const status = hasEnoughQuestions ? 'active' : 'draft';
         
         // If we have an auto-saved survey ID, use that instead of creating a new one
         if (autoSavedId) {
@@ -569,7 +615,7 @@ export default function SurveyCreationPage() {
               // For questions from question_bank, store a reference to the question_bank_id
               // For custom questions, question_bank_id will be null
               const questionId = question.id.startsWith('db-') 
-                ? dbQuestions.find(q => q.id === question.id)?.id.replace('db-', '') 
+                ? parseInt(question.id.replace('db-', ''), 10)
                 : null;
               
               return {
@@ -597,7 +643,7 @@ export default function SurveyCreationPage() {
           }
           
           await fetchRestaurantQRCode();
-          setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
+          setSaveSuccess(`Survey ${hasEnoughQuestions ? 'completed and activated' : 'saved as draft'}!`);
           
           // Reset form after successful save
           setSurveyName('');
@@ -654,7 +700,7 @@ export default function SurveyCreationPage() {
               // For questions from question_bank, store a reference to the question_bank_id
               // For custom questions, question_bank_id will be null
               const questionId = question.id.startsWith('db-') 
-                ? dbQuestions.find(q => q.id === question.id)?.id.replace('db-', '') 
+                ? parseInt(question.id.replace('db-', ''), 10)
                 : null;
               
               return {
@@ -682,7 +728,7 @@ export default function SurveyCreationPage() {
           }
           
           await fetchRestaurantQRCode();
-          setSaveSuccess(`Survey ${isComplete ? 'completed and activated' : 'saved as draft'}!`);
+          setSaveSuccess(`Survey ${hasEnoughQuestions ? 'completed and activated' : 'saved as draft'}!`);
           
           // Reset form after successful save
           setSurveyName('');
@@ -859,6 +905,10 @@ export default function SurveyCreationPage() {
 
   // Function to fetch existing survey data when in edit mode
   const fetchExistingSurvey = useCallback(async (surveyId: string) => {
+    // Prevent re-entry if we're already fetching
+    if (isFetchingExisting) return;
+    
+    setIsFetchingExisting(true);
     setIsLoading(true);
     setError(null);
     
@@ -890,7 +940,14 @@ export default function SurveyCreationPage() {
       setLocation(surveyData.location || '');
       setSurveyStatus(surveyData.status || 'draft');
       
-      // 2. Next get the survey questions from survey_questions table
+      // 2. First ensure we have dbQuestions loaded before proceeding
+      // Instead of using dbQuestions state directly, we'll use dbQuestionsRef
+      if (dbQuestionsRef.current.length === 0) {
+        console.log('dbQuestions not yet loaded, fetching them first');
+        await fetchQuestions();
+      }
+      
+      // 3. Get the survey questions from survey_questions table after dbQuestions is loaded
       try {
         const { data: questionsData, error: questionsError } = await supabase
           .from('survey_questions')
@@ -900,41 +957,55 @@ export default function SurveyCreationPage() {
         
         console.log('Survey questions query result:', { data: questionsData, error: questionsError });
         
-        // Wait for dbQuestions to be loaded before proceeding
-        await fetchQuestions(); 
-        
-        // Even if there's an error with the survey_questions table or no data,
+        // If there's an error with the survey_questions table or no data,
         // we'll just treat it as if there are no questions for this survey
-        // This prevents errors when the survey exists but has no questions yet
         if (questionsError) {
           console.log('Note: Error fetching survey questions, treating as empty:', questionsError);
-          // Continue with empty questions instead of returning an error
           setSelectedQuestionIds([]);
           setCustomQuestions([]);
         } else if (!questionsData || questionsData.length === 0) {
           console.log('No questions found for this survey - showing default question bank with no selections');
-          // Just show the normal question bank with no pre-selections
           setSelectedQuestionIds([]);
           setCustomQuestions([]);
         } else {
           // If we have questions, process them normally
           const customQs: Question[] = [];
           const selectedIds: string[] = [];
+          const currentDbQuestions = dbQuestionsRef.current;
+          
+          console.log('Processing questions using dbQuestionsRef:', currentDbQuestions.length);
           
           questionsData.forEach((q, index) => {
             // For each question in the survey, try to find it in dbQuestions
-            const matchingDbQuestion = dbQuestions.find(dbQ => dbQ.text === q.question_text);
+            let matchingDbQuestion;
+            
+            if (q.question_bank_id) {
+              // If we have a question_bank_id, use that for a more reliable match
+              matchingDbQuestion = currentDbQuestions.find(dbQ => 
+                dbQ.id === `db-${q.question_bank_id}`
+              );
+              console.log(`Looking for question with bank ID ${q.question_bank_id}, found:`, matchingDbQuestion);
+            } else {
+              // Otherwise fall back to matching by text
+              matchingDbQuestion = currentDbQuestions.find(dbQ => 
+                dbQ.text === q.question_text
+              );
+              console.log(`Looking for question with text "${q.question_text}", found:`, matchingDbQuestion);
+            }
             
             if (matchingDbQuestion) {
-              // If it exists in dbQuestions, just add its ID to selectedQuestionIds
+              console.log(`Found matching question in database: "${matchingDbQuestion.text}" with ID ${matchingDbQuestion.id}`);
+              // If it exists in dbQuestions, add its ID to selectedQuestionIds
               selectedIds.push(matchingDbQuestion.id);
             } else {
+              console.log(`Creating custom question for: "${q.question_text}"`);
               // If it doesn't exist in dbQuestions, create a custom question
               const customQ: Question = {
                 id: `custom-edit-${index}`,
                 text: q.question_text,
                 options: q.options || [],
                 category: q.category || '',
+                is_custom: true
               };
               customQs.push(customQ);
               selectedIds.push(customQ.id);
@@ -942,6 +1013,8 @@ export default function SurveyCreationPage() {
           });
           
           // Set the custom questions and selected question IDs
+          console.log('Setting selectedQuestionIds:', selectedIds);
+          console.log('Setting customQuestions:', customQs);
           setCustomQuestions(customQs);
           setSelectedQuestionIds(selectedIds);
         }
@@ -958,12 +1031,19 @@ export default function SurveyCreationPage() {
       setError('An unexpected error occurred while loading the survey');
     } finally {
       setIsLoading(false);
+      setIsFetchingExisting(false);
     }
-  }, [dbQuestions, fetchQuestions, setCustomQuestions, setError, setIsLoading, setLocation, setSelectedQuestionIds, setSurveyName]);
+  }, [fetchQuestions, setCustomQuestions, setError, setLocation, setSelectedQuestionIds, setSurveyName, setSurveyStatus, isFetchingExisting]);
 
   // Check for edit mode in URL parameters
   useEffect(() => {
     const checkForEditMode = async () => {
+      // Only proceed if we haven't already loaded the survey
+      if (hasLoadedSurveyRef.current) {
+        console.log('Survey already loaded, skipping reload');
+        return;
+      }
+
       // Extract survey ID from URL if in edit mode
       // In client-side navigation, we need to get the URL search params
       if (typeof window !== 'undefined') {
@@ -977,6 +1057,9 @@ export default function SurveyCreationPage() {
           
           // Fetch the existing survey data
           await fetchExistingSurvey(editParam);
+          
+          // Mark the survey as loaded to prevent reloading
+          hasLoadedSurveyRef.current = true;
         }
       }
     };
@@ -1082,7 +1165,7 @@ export default function SurveyCreationPage() {
                           </div>
                         )}
                       
-                        {isLoading ? (
+                        {isFetchingQuestions ? (
                           <div className="text-center py-4 text-gray-500">Loading questions...</div>
                         ) : allQuestions.length === 0 ? (
                           <div className="text-center py-4 text-gray-500">No questions available</div>
