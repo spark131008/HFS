@@ -29,7 +29,13 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
   
   // Separate active and inactive surveys
   const activeSurveys = surveys?.filter(survey => survey.status === 'active') || [];
-  const inactiveSurveys = surveys?.filter(survey => survey.status !== 'active') || [];
+  const inactiveSurveys = surveys?.filter(survey => survey.status !== 'active')
+    .sort((a, b) => {
+      // Sort "active-ready" before "draft"
+      if (a.status === 'active-ready' && b.status !== 'active-ready') return -1;
+      if (a.status !== 'active-ready' && b.status === 'active-ready') return 1;
+      return 0;
+    }) || [];
 
   const activateSurvey = async (surveyId: string) => {
     try {
@@ -135,71 +141,71 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
       <MainNavigationBar />
      
       <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-blue-600 mb-2">My Surveys</h1>
-            <p className="text-gray-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-blue-600 mb-2">My Surveys</h1>
+            <p className="text-sm sm:text-base text-gray-600">
               Welcome back! Manage your surveys and track feedback insights.
             </p>
           </div>
 
           {/* Quick stats section */}
           {surveys && surveys.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <Card className="bg-gradient-to-br from-blue-50 to-white border border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-medium text-blue-700 flex items-center">
-                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-                    Active Surveys
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <Card className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 aspect-square sm:aspect-auto flex flex-col justify-center">
+                <CardHeader className="pb-0 sm:pb-2 px-3 pt-3 text-center sm:text-left">
+                  <CardTitle className="text-sm sm:text-base font-medium text-blue-700 flex items-center justify-center sm:justify-start">
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                    Active
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{activeSurveys.length}</p>
-                  <p className="text-sm text-gray-600">Currently collecting responses</p>
+                <CardContent className="px-3 py-2 text-center sm:text-left flex flex-col items-center sm:items-start justify-center">
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{activeSurveys.length}</p>
+                  <p className="text-xs text-gray-600">surveys</p>
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-white border border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-medium text-blue-700 flex items-center">
-                    <XCircle className="h-5 w-5 mr-2 text-gray-500" />
-                    Inactive Surveys
+              <Card className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 aspect-square sm:aspect-auto flex flex-col justify-center">
+                <CardHeader className="pb-0 sm:pb-2 px-3 pt-3 text-center sm:text-left">
+                  <CardTitle className="text-sm sm:text-base font-medium text-blue-700 flex items-center justify-center sm:justify-start">
+                    <XCircle className="h-4 w-4 mr-2 text-gray-500" />
+                    Inactive
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{inactiveSurveys.length}</p>
-                  <p className="text-sm text-gray-600">Paused or completed</p>
+                <CardContent className="px-3 py-2 text-center sm:text-left flex flex-col items-center sm:items-start justify-center">
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{inactiveSurveys.length}</p>
+                  <p className="text-xs text-gray-600">surveys</p>
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-white border border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-medium text-blue-700 flex items-center">
-                    <Users className="h-5 w-5 mr-2 text-blue-500" />
-                    Total Responses
+              <Card className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 aspect-square sm:aspect-auto flex flex-col justify-center">
+                <CardHeader className="pb-0 sm:pb-2 px-3 pt-3 text-center sm:text-left">
+                  <CardTitle className="text-sm sm:text-base font-medium text-blue-700 flex items-center justify-center sm:justify-start">
+                    <Users className="h-4 w-4 mr-2 text-blue-500" />
+                    Responses
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{surveys.reduce((sum, survey) => sum + survey.responses_count, 0)}</p>
-                  <p className="text-sm text-gray-600">From all surveys</p>
+                <CardContent className="px-3 py-2 text-center sm:text-left flex flex-col items-center sm:items-start justify-center">
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{surveys.reduce((sum, survey) => sum + survey.responses_count, 0)}</p>
+                  <p className="text-xs text-gray-600">total</p>
                 </CardContent>
               </Card>
             </div>
           )}
 
           {/* Create new survey button (always visible) */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">All Surveys</h2>
-            <div className="flex gap-3">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
-                <Link href="/qr" className="flex items-center gap-2">
-                  <QrCode className="h-5 w-5" />
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">All Surveys</h2>
+            <div className="flex flex-row gap-3">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 w-1/2 sm:w-auto text-sm py-2 h-auto" asChild>
+                <Link href="/qr" className="flex items-center justify-center gap-2">
+                  <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
                   Show QR Code
                 </Link>
               </Button>
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
-                <Link href="/survey-creation" className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 w-1/2 sm:w-auto text-sm py-2 h-auto" asChild>
+                <Link href="/survey-creation" className="flex items-center justify-center gap-2">
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                   Create New Survey
                 </Link>
               </Button>
@@ -211,48 +217,70 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
               {/* Active Surveys Section */}
               {activeSurveys.length > 0 && (
                 <>
-                  <h3 className="text-xl font-medium text-gray-700 mb-4 mt-8 flex items-center">
-                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                  <h3 className="text-lg sm:text-xl font-medium text-gray-700 mb-3 sm:mb-4 mt-6 sm:mt-8 flex items-center">
+                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-green-500" />
                     Active Surveys
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
                     {activeSurveys.map((survey) => (
                       <Card key={survey.id} className="hover:shadow-md transition-all duration-200 border border-gray-200 bg-white overflow-hidden">
-                        <div className="h-2 bg-green-500"></div>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-xl text-blue-600 line-clamp-1">
-                            {survey.title}{survey.location ? ` in ${survey.location}` : ''}
-                          </CardTitle>
-                          <CardDescription className="flex items-center text-sm">
-                            <Clock className="h-4 w-4 mr-1 opacity-70" />
+                        <div className="h-2 sm:h-2 bg-green-500"></div>
+                        
+                        <CardHeader className="pb-2 pt-4 sm:pt-3 px-4 sm:px-6">
+                          <div className="flex justify-between items-center gap-2">
+                            <CardTitle className="text-xl sm:text-lg text-blue-600 line-clamp-1 flex-1">
+                              {survey.title}
+                              <span className="hidden sm:inline">{survey.location ? ` in ${survey.location}` : ''}</span>
+                            </CardTitle>
+                            
+                            {/* Mobile deactivate button inline with title (visible only on mobile) */}
+                            <div className="sm:hidden">
+                              <Button 
+                                size="sm" 
+                                className="bg-gray-600 hover:bg-gray-700 py-1 h-7 px-2 text-xs rounded-md whitespace-nowrap"
+                                onClick={() => deactivateSurvey(survey.id)}
+                                disabled={deactivatingSurveyId === survey.id}
+                              >
+                                {deactivatingSurveyId === survey.id ? '...' : 'Deactivate'}
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <CardDescription className="sm:flex items-center text-xs sm:text-sm hidden">
+                            <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 opacity-70" />
                             Created on {new Date(survey.created_at).toLocaleDateString()}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="pb-2">
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-gray-500" />
-                            <p className="text-gray-600 text-sm">{survey.responses_count} responses received</p>
+                        <CardContent className="pb-3 px-4 sm:px-6">
+                          <div className="flex items-center gap-1 mb-3 sm:mb-0">
+                            <Users className="h-4 w-4 sm:h-3 sm:w-3 text-gray-500" />
+                            <p className="text-sm sm:text-xs text-gray-600">
+                              <span className="font-medium">{survey.responses_count}</span> responses
+                            </p>
                           </div>
-                          <div className="mt-2 text-sm text-green-700 bg-green-50 px-3 py-1 rounded-md flex justify-between items-center">
-                            <span>This survey is currently active</span>
-                            <Button 
-                              size="sm" 
-                              className="bg-gray-600 hover:bg-gray-700 ml-2"
-                              onClick={() => deactivateSurvey(survey.id)}
-                              disabled={deactivatingSurveyId === survey.id}
-                            >
-                              {deactivatingSurveyId === survey.id ? 'Deactivating...' : 'Deactivate'}
-                            </Button>
+                          <div className="mt-2 text-sm sm:text-xs text-green-700 bg-green-50 px-4 py-3 sm:py-2 rounded-md flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                            <span className="font-medium">Currently active</span>
+                            {/* Desktop deactivate button (hidden on mobile) */}
+                            <div className="hidden sm:block">
+                              <Button 
+                                size="sm" 
+                                className="bg-gray-600 hover:bg-gray-700 w-auto py-1 h-auto text-xs"
+                                onClick={() => deactivateSurvey(survey.id)}
+                                disabled={deactivatingSurveyId === survey.id}
+                              >
+                                {deactivatingSurveyId === survey.id ? 'Working...' : 'Deactivate'}
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
-                        <CardFooter className="flex justify-between pt-2 border-t border-gray-100">
-                          <Button variant="outline" size="sm" className="w-[48%]" asChild>
+                        <CardFooter className="flex justify-between pt-2 px-4 sm:px-6 border-t border-gray-100">
+                          <Button variant="outline" size="sm" className="w-[48%] py-3 sm:py-1 h-auto text-sm sm:text-sm" asChild>
                             <Link href={`/survey/${survey.id}`}>
-                              <BarChart3 className="h-4 w-4 mr-1" />
+                              <BarChart3 className="h-4 w-4 sm:h-3 sm:w-3 mr-2 sm:mr-1" />
                               Results
                             </Link>
                           </Button>
-                          <Button size="sm" className="w-[48%] bg-blue-600 hover:bg-blue-700" asChild>
+                          <Button size="sm" className="w-[48%] py-3 sm:py-1 h-auto text-sm sm:text-sm bg-blue-600 hover:bg-blue-700" asChild>
                             <Link href={`/survey-creation?edit=${survey.id}`}>
                               Edit
                             </Link>
@@ -267,62 +295,84 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
               {/* Inactive Surveys Section */}
               {inactiveSurveys.length > 0 && (
                 <>
-                  <h3 className="text-xl font-medium text-gray-700 mb-4 mt-8 flex items-center">
-                    <XCircle className="h-5 w-5 mr-2 text-gray-500" />
+                  <h3 className="text-lg sm:text-xl font-medium text-gray-700 mb-3 sm:mb-4 mt-6 sm:mt-8 flex items-center">
+                    <XCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-gray-500" />
                     Inactive Surveys
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {inactiveSurveys.map((survey) => (
                       <Card key={survey.id} className={`hover:shadow-md transition-all duration-200 border border-gray-200 bg-white overflow-hidden ${survey.status === 'draft' ? 'opacity-75' : 'opacity-90'}`}>
                         <div className={`h-2 ${survey.status === 'active-ready' ? 'bg-yellow-400' : 'bg-gray-400'}`}></div>
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <CardTitle className="text-xl text-gray-700 line-clamp-1">
-                              {survey.title}{survey.location ? ` in ${survey.location}` : ''}
+                        
+                        <CardHeader className="pb-2 pt-4 sm:pt-3 px-4 sm:px-6">
+                          <div className="flex justify-between items-center gap-2">
+                            <CardTitle className="text-xl sm:text-lg text-gray-700 line-clamp-1 flex-1">
+                              {survey.title}
+                              <span className="hidden sm:inline">{survey.location ? ` in ${survey.location}` : ''}</span>
                               {survey.status === 'draft' && (
-                                <span className="ml-2 inline-block px-2 py-1 text-xs font-medium rounded bg-gray-200 text-gray-700">
+                                <span className="ml-1 inline-block px-1 py-0.5 text-xxs sm:text-xs font-medium rounded bg-gray-200 text-gray-700 align-text-top">
                                   DRAFT
                                 </span>
                               )}
                             </CardTitle>
+                            
+                            {/* Mobile activate button inline with title for active-ready surveys */}
+                            {survey.status === 'active-ready' && (
+                              <div className="sm:hidden">
+                                <Button 
+                                  size="sm" 
+                                  className="bg-green-600 hover:bg-green-700 py-1 h-7 px-2 text-xs rounded-md whitespace-nowrap"
+                                  onClick={() => activateSurvey(survey.id)}
+                                  disabled={activatingSurveyId === survey.id}
+                                >
+                                  {activatingSurveyId === survey.id ? '...' : 'Activate'}
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                          <CardDescription className="flex items-center text-sm">
-                            <Clock className="h-4 w-4 mr-1 opacity-70" />
+                          
+                          <CardDescription className="sm:flex items-center text-xs sm:text-sm hidden">
+                            <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 opacity-70" />
                             Created on {new Date(survey.created_at).toLocaleDateString()}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent className="pb-2">
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-gray-500" />
-                            <p className="text-gray-600 text-sm">{survey.responses_count} responses received</p>
+                        <CardContent className="pb-3 px-4 sm:px-6">
+                          <div className="flex items-center gap-1 mb-3 sm:mb-0">
+                            <Users className="h-4 w-4 sm:h-3 sm:w-3 text-gray-500" />
+                            <p className="text-sm sm:text-xs text-gray-600">
+                              <span className="font-medium">{survey.responses_count}</span> responses
+                            </p>
                           </div>
                           {survey.status === 'active-ready' && (
-                            <div className="mt-2 text-sm text-yellow-700 bg-yellow-50 px-3 py-1 rounded-md flex justify-between items-center">
-                              <span>This survey is ready to be activated</span>
-                              <Button 
-                                size="sm" 
-                                className="bg-green-600 hover:bg-green-700 ml-2"
-                                onClick={() => activateSurvey(survey.id)}
-                                disabled={activatingSurveyId === survey.id}
-                              >
-                                {activatingSurveyId === survey.id ? 'Activating...' : 'Activate'}
-                              </Button>
+                            <div className="mt-2 text-sm sm:text-xs text-yellow-700 bg-yellow-50 px-4 py-3 sm:py-2 rounded-md flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                              <span className="font-medium">Ready to activate</span>
+                              {/* Desktop activate button (hidden on mobile) */}
+                              <div className="hidden sm:block">
+                                <Button 
+                                  size="sm" 
+                                  className="bg-green-600 hover:bg-green-700 w-auto py-1 h-auto text-xs"
+                                  onClick={() => activateSurvey(survey.id)}
+                                  disabled={activatingSurveyId === survey.id}
+                                >
+                                  {activatingSurveyId === survey.id ? 'Working...' : 'Activate'}
+                                </Button>
+                              </div>
                             </div>
                           )}
                           {survey.status === 'draft' && (
-                            <div className="mt-2 text-sm text-gray-700 bg-gray-50 px-3 py-1 rounded-md">
-                              Complete all requirements to activate
+                            <div className="mt-2 text-sm sm:text-xs text-gray-700 bg-gray-50 px-4 py-3 sm:py-2 rounded-md">
+                              <span className="font-medium">Complete to activate</span>
                             </div>
                           )}
                         </CardContent>
-                        <CardFooter className="flex justify-between pt-2 border-t border-gray-100">
-                          <Button variant="outline" size="sm" className="w-[48%]" asChild>
+                        <CardFooter className="flex justify-between pt-2 px-4 sm:px-6 border-t border-gray-100">
+                          <Button variant="outline" size="sm" className="w-[48%] py-3 sm:py-1 h-auto text-sm sm:text-sm" asChild>
                             <Link href={`/survey/${survey.id}`}>
-                              <BarChart3 className="h-4 w-4 mr-1" />
+                              <BarChart3 className="h-4 w-4 sm:h-3 sm:w-3 mr-2 sm:mr-1" />
                               Results
                             </Link>
                           </Button>
-                          <Button size="sm" className="w-[48%] bg-blue-600 hover:bg-blue-700" asChild>
+                          <Button size="sm" className="w-[48%] py-3 sm:py-1 h-auto text-sm sm:text-sm bg-blue-600 hover:bg-blue-700" asChild>
                             <Link href={`/survey-creation?edit=${survey.id}`}>
                               Edit
                             </Link>
@@ -335,17 +385,17 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
               )}
             </>
           ) : (
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-10 text-center">
-              <div className="mx-auto mb-6 rounded-full bg-blue-100 p-5 w-20 h-20 flex items-center justify-center">
-                <Plus className="h-10 w-10 text-blue-600" />
+            <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 sm:p-10 text-center">
+              <div className="mx-auto mb-4 sm:mb-6 rounded-full bg-blue-100 p-3 sm:p-5 w-16 sm:w-20 h-16 sm:h-20 flex items-center justify-center">
+                <Plus className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight mb-3 text-blue-600">No surveys yet</h2>
-              <p className="text-gray-600 max-w-md mx-auto mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-2 sm:mb-3 text-blue-600">No surveys yet</h2>
+              <p className="text-sm sm:text-base text-gray-600 max-w-md mx-auto mb-4 sm:mb-6">
                 Create your first survey to start collecting valuable feedback from your customers.
               </p>
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" asChild>
-                <Link href="/survey-creation" className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm py-2 h-auto" asChild>
+                <Link href="/survey-creation" className="flex items-center justify-center gap-2">
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                   Create New Survey
                 </Link>
               </Button>
