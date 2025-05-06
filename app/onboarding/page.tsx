@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import { createRestaurant } from "@/utils/restaurant-utils";
+import { theme, cn } from "@/theme";
 
 export default function OnboardingPage() {
   const [restaurantName, setRestaurantName] = useState("");
@@ -79,13 +80,39 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-100 to-gray-50 p-8">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-        <h1 className="text-3xl font-bold text-blue-600 mb-4 text-center">Welcome to HFS!</h1>
-        <p className="mb-6 text-gray-600 text-center">Let&apos;s get started by telling us about your restaurant.</p>
+    <div className={cn(
+      "min-h-screen flex flex-col items-center justify-center p-8",
+      theme.colors.background.gradient
+    )}>
+      <div className={cn(
+        "w-full max-w-md",
+        theme.colors.background.light,
+        theme.borderRadius.default,
+        theme.effects.shadow.lg,
+        "p-8 border border-gray-200"
+      )}>
+        <h1 className={cn(
+          theme.typography.fontFamily.display,
+          theme.typography.fontWeight.bold,
+          theme.typography.fontSize["3xl"],
+          theme.colors.accent.blue,
+          "mb-4 text-center"
+        )}>Welcome to HFS!</h1>
+        <p className={cn(
+          theme.typography.fontSize.base,
+          theme.colors.text.secondary,
+          "mb-6 text-center"
+        )}>
+          Let&apos;s get started by telling us about your restaurant.
+        </p>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="restaurantName" className="block text-gray-700 font-medium mb-2">Restaurant Name</label>
+            <label htmlFor="restaurantName" className={cn(
+              theme.colors.text.primary,
+              theme.typography.fontWeight.medium,
+              theme.typography.fontSize.base,
+              "block mb-2"
+            )}>Restaurant Name</label>
             <Input
               id="restaurantName"
               value={restaurantName}
@@ -95,8 +122,8 @@ export default function OnboardingPage() {
               className="mt-1"
             />
           </div>
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          {error && <div className={cn("text-red-600 text-sm")}>{error}</div>}
+          <Button type="submit" className={cn("w-full", theme.typography.fontWeight.semibold, theme.typography.fontSize.base)} disabled={loading}>
             {loading ? "Saving..." : "Continue"}
           </Button>
         </form>

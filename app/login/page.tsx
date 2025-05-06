@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import MainNavigationBar from "@/components/MainNavigationBar";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { theme, cn } from "@/theme";
 
 export default function Login() {
   const supabase = createClient();
@@ -40,26 +41,50 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={cn("min-h-screen flex flex-col", theme.colors.background.gradient)}>
       <MainNavigationBar />
-      <main className="flex-1 flex items-start justify-center bg-gray-50 pt-16">
-        <div className="w-full max-w-xl mx-auto px-4 py-8 sm:px-6">
+      <main className={cn(
+        "flex-1 flex items-start justify-center pt-16",
+        "bg-gradient-to-b from-gray-50 to-white"
+      )}>
+        <div className={cn(
+          "w-full max-w-xl mx-auto px-4 py-8 sm:px-6"
+        )}>
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold tracking-tight text-blue-600 mb-4">
+            <h1 className={cn(
+              theme.typography.fontFamily.display,
+              theme.typography.fontWeight.bold,
+              theme.typography.fontSize["4xl"],
+              "tracking-tight mb-4",
+              theme.colors.text.gradient
+            )}>
               Sign up or Log in to HFS
             </h1>
-            <p className="text-lg text-gray-600 max-w-md mx-auto">
+            <p className={cn(
+              theme.typography.fontSize.lg,
+              theme.colors.text.secondary,
+              "max-w-md mx-auto"
+            )}>
               Transform customer opinions into actionable insights with
               our hyper-personalized feedback system.
             </p>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm p-8 border border-gray-200">
+          <div className={cn(
+            theme.colors.background.light,
+            theme.borderRadius.default,
+            theme.effects.shadow.sm,
+            "p-8 border border-gray-200"
+          )}>
             <Button
               type="button"
               variant="outline"
               size="lg"
-              className="w-full flex items-center justify-center gap-3 py-6 text-lg"
+              className={cn(
+                "w-full flex items-center justify-center gap-3 py-6",
+                theme.typography.fontSize.lg,
+                theme.typography.fontWeight.semibold
+              )}
               onClick={signInWithGoogle}
             >
               <Image
@@ -71,7 +96,11 @@ export default function Login() {
               <span>Continue with Google</span>
             </Button>
             
-            <p className="mt-8 text-center text-sm text-gray-500">
+            <p className={cn(
+              "mt-8 text-center",
+              theme.typography.fontSize.sm,
+              theme.colors.text.secondary
+            )}>
               By clicking &quot;Continue with Google&quot;, you acknowledge
               that you have read and understood, and agree to HFS&apos;s
               Terms &amp; Conditions, Privacy Policy, and Content Policy.

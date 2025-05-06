@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import MySurveysClient from "./client";
+import { theme, cn } from "@/theme";
 
 // Define survey interface
 interface Survey {

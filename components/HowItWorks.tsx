@@ -1,3 +1,5 @@
+import { theme, cn } from "@/theme";
+
 export default function HowItWorks() {
   const steps = [
     {
@@ -23,13 +25,26 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="py-20 bg-gradient-to-b from-white to-gray-50">
-      <div className="container mx-auto px-4">
+    <section id="how-it-works" className={cn(
+      theme.spacing.section.default,
+      "bg-gradient-to-b from-white to-gray-50"
+    )}>
+      <div className={theme.spacing.container}>
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold font-display tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+          <h2 className={cn(
+            theme.typography.fontSize["4xl"],
+            theme.typography.fontWeight.bold,
+            theme.typography.fontFamily.display,
+            "tracking-tight mb-3",
+            theme.colors.text.gradient
+          )}>
             How It Works
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className={cn(
+            theme.typography.fontSize.lg,
+            theme.colors.text.secondary,
+            "max-w-2xl mx-auto"
+          )}>
             Our hyper-personalized feedback system makes it easy to collect, analyze, and act on customer feedback.
           </p>
         </div>
@@ -38,13 +53,33 @@ export default function HowItWorks() {
           {steps.map((step, index) => (
             <div 
               key={index} 
-              className="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-xl transition-shadow bg-gradient-to-br from-white to-indigo-50/30"
+              className={cn(
+                theme.colors.background.light,
+                "p-6",
+                theme.borderRadius.default,
+                theme.effects.shadow.md,
+                "border border-gray-100",
+                "hover:shadow-xl",
+                theme.transitions.shadow,
+                "bg-gradient-to-br from-white to-indigo-50/30"
+              )}
             >
               <div className="text-4xl mb-4">{step.icon}</div>
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">{step.title}</h3>
-              <p className="text-gray-600">{step.description}</p>
+              <h3 className={cn(
+                theme.typography.fontSize.xl,
+                theme.typography.fontWeight.semibold,
+                "mb-3",
+                theme.colors.text.primary
+              )}>{step.title}</h3>
+              <p className={theme.colors.text.secondary}>{step.description}</p>
               <div className="mt-4 flex items-center">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold">
+                <span className={cn(
+                  theme.layout.flex.center,
+                  "w-8 h-8",
+                  theme.borderRadius.full,
+                  "bg-indigo-100 text-indigo-600",
+                  theme.typography.fontWeight.bold
+                )}>
                   {index + 1}
                 </span>
                 {index < steps.length - 1 && (

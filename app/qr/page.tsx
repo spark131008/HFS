@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import MainNavigationBar from "@/components/MainNavigationBar";
+import { theme, cn } from "@/theme";
 
 export default function QRCodePage() {
   const [restaurantName, setRestaurantName] = useState("");
@@ -61,35 +62,59 @@ export default function QRCodePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className={cn("min-h-screen flex flex-col")}> 
         <MainNavigationBar />
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-gray-100 to-gray-50 p-8">
-          <div className="text-red-600">{error}</div>
+        <div className={cn(
+          "flex-1 flex items-center justify-center p-8",
+          theme.colors.background.gradient
+        )}>
+          <div className={cn("text-red-600")}>{error}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={cn("min-h-screen flex flex-col")}> 
       <MainNavigationBar />
-      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-gray-100 to-gray-50 p-8">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-          <h1 className="text-3xl font-bold text-blue-600 mb-4 text-center">
+      <div className={cn(
+        "flex-1 flex flex-col items-center justify-center p-8",
+        theme.colors.background.gradient
+      )}>
+        <div className={cn(
+          "w-full max-w-md",
+          theme.colors.background.light,
+          theme.borderRadius.default,
+          theme.effects.shadow.lg,
+          "p-8 border border-gray-200"
+        )}>
+          <h1 className={cn(
+            theme.typography.fontFamily.display,
+            theme.typography.fontWeight.bold,
+            theme.typography.fontSize["3xl"],
+            theme.colors.primary.to,
+            "mb-4 text-center"
+          )}>
             {restaurantName}
           </h1>
-          <p className="mb-6 text-gray-600 text-center">Your restaurant&apos;s QR code for customer feedback</p>
-          
+          <p className={cn(
+            theme.typography.fontSize.base,
+            theme.colors.text.secondary,
+            "mb-6 text-center"
+          )}>
+            Your restaurant&apos;s QR code for customer feedback
+          </p>
           <div className="flex flex-col items-center space-y-4">
             <div className="relative w-64 h-64">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qrCode || undefined} alt="Restaurant QR Code" className="w-full h-full" />
             </div>
-            
             {restaurantCode && (
-              <p className="text-sm text-gray-600">Restaurant Code: {restaurantCode}</p>
+              <p className={cn(
+                theme.typography.fontSize.sm,
+                theme.colors.text.secondary
+              )}>Restaurant Code: {restaurantCode}</p>
             )}
-            
             <div className="flex flex-col w-full space-y-3">
               <Button onClick={() => {
                 const printWindow = window.open('', '_blank');
@@ -135,10 +160,10 @@ export default function QRCodePage() {
                   printWindow.focus();
                   printWindow.print();
                 }
-              }} className="bg-blue-600 hover:bg-blue-700">
+              }} className={cn(theme.effects.gradient.primary, theme.colors.text.white, theme.typography.fontWeight.semibold, theme.typography.fontSize.base)}>
                 Print QR Code
               </Button>
-              <Button onClick={handleContinue} variant="outline">
+              <Button onClick={handleContinue} variant="outline" className={cn(theme.typography.fontWeight.semibold, theme.typography.fontSize.base)}>
                 Continue to Dashboard
               </Button>
             </div>
