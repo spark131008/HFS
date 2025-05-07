@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { theme, cn, componentStyles } from "@/theme";
 
 type User = {
   name?: string;
@@ -82,10 +83,24 @@ export default function MainNavigationBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <Link href="/" className="text-xl font-bold font-display bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+    <header className={cn(
+      "sticky top-0",
+      theme.zIndex.header,
+      theme.colors.background.light,
+      theme.effects.shadow.sm
+    )}>
+      <div className={cn(
+        theme.spacing.container,
+        "py-4",
+        theme.layout.flex.between
+      )}>
+        <div className={theme.layout.flex.center}>
+          <Link href="/" className={cn(
+            theme.typography.fontSize.xl,
+            theme.typography.fontWeight.bold,
+            theme.typography.fontFamily.display,
+            theme.colors.text.gradient
+          )}>
             HFS
           </Link>
         </div>
@@ -93,51 +108,94 @@ export default function MainNavigationBar() {
         <nav className="hidden md:flex items-center space-x-6">
           {isHomePage && !isLoggedIn && (
             <>
-              <Link href="#benefits" className="text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
+              <Link href="#benefits" className={cn(
+                theme.typography.fontFamily.display,
+                theme.typography.fontWeight.semibold,
+                theme.typography.fontSize.base,
+                "hover:text-indigo-600",
+                theme.transitions.colors
+              )}>
                 Benefits
               </Link>
-              <Link href="#how-it-works" className="text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
+              <Link href="#how-it-works" className={cn(
+                theme.typography.fontFamily.display,
+                theme.typography.fontWeight.semibold,
+                theme.typography.fontSize.base,
+                "hover:text-indigo-600",
+                theme.transitions.colors
+              )}>
                 How It Works
               </Link>
             </>
           )}
           
           {isLoggedIn ? (
-            <div className="flex items-center space-x-4">
-              <Link href="/my-surveys" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <div className={cn(theme.layout.flex.center, "space-x-4")}>
+              <Link href="/my-surveys" className={cn(
+                theme.typography.fontFamily.display,
+                theme.typography.fontWeight.semibold,
+                theme.typography.fontSize.base,
+                theme.colors.text.secondary,
+                "hover:text-blue-600",
+                theme.transitions.colors
+              )}>
                 My Surveys
               </Link>
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white">
+              <div className={cn(theme.layout.flex.center, "space-x-2")}>
+                <div className={cn(
+                  "h-8 w-8",
+                  theme.borderRadius.full,
+                  theme.effects.gradient.primary,
+                  theme.colors.text.white,
+                  theme.layout.flex.center
+                )}>
                   {user?.avatar ? (
                     <Image 
                       src={user.avatar} 
                       alt={user.name || 'User'} 
                       width={32} 
                       height={32} 
-                      className="rounded-full" 
+                      className={theme.borderRadius.full}
                     />
                   ) : (
                     <span>{user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}</span>
                   )}
                 </div>
-                <span className="text-sm font-medium">{user?.name || user?.email?.split('@')[0]}</span>
+                <span className={cn(
+                  theme.typography.fontFamily.display,
+                  theme.typography.fontWeight.medium,
+                  theme.typography.fontSize.sm
+                )}>{user?.name || user?.email?.split('@')[0]}</span>
               </div>
-              <Button variant="ghost" className="hover:text-indigo-600" onClick={handleLogout}>
+              <Button variant="ghost" className={cn(
+                theme.typography.fontFamily.display,
+                theme.typography.fontWeight.semibold,
+                theme.typography.fontSize.base,
+                "hover:text-indigo-600"
+              )} onClick={handleLogout}>
                 Logout
               </Button>
             </div>
           ) : (
-            <div className="flex items-center space-x-4">
+            <div className={cn(theme.layout.flex.center, "space-x-4")}>
               {!isLoginPage && (
-                <Button variant="ghost">
+                <Button variant="ghost" className={cn(
+                  theme.typography.fontFamily.display,
+                  theme.typography.fontWeight.semibold,
+                  theme.typography.fontSize.base
+                )}>
                   <Link href="/login">
                     Sign up/Log in
                   </Link>
                 </Button>
               )}
               {pathname !== '/login' && (
-                <Button>
+                <Button className={cn(
+                  componentStyles.button.primary,
+                  theme.typography.fontFamily.display,
+                  theme.typography.fontWeight.semibold,
+                  theme.typography.fontSize.base
+                )}>
                   <Link href="/login">
                     Get Started
                   </Link>
@@ -147,9 +205,13 @@ export default function MainNavigationBar() {
           )}
         </nav>
         
-        {/* Mobile menu button - now functional */}
+        {/* Mobile menu button */}
         <button 
-          className="md:hidden p-2 text-indigo-600 focus:outline-none"
+          className={cn(
+            "md:hidden p-2",
+            "text-indigo-600",
+            "focus:outline-none"
+          )}
           onClick={toggleMobileMenu}
           aria-label="Toggle mobile menu"
         >
@@ -172,20 +234,48 @@ export default function MainNavigationBar() {
 
       {/* Mobile menu dropdown */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 shadow-lg animate-fadeIn">
-          <div className="container mx-auto px-4 py-3 space-y-4">
+        <div className={cn(
+          "md:hidden",
+          theme.colors.background.light,
+          "border-t",
+          "border-gray-100",
+          theme.effects.shadow.lg,
+          "animate-fadeIn"
+        )}>
+          <div className={cn(
+            theme.spacing.container,
+            "py-3 space-y-4"
+          )}>
             {isHomePage && !isLoggedIn && (
               <div className="space-y-3">
                 <Link 
                   href="#benefits" 
-                  className="block text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                  className={cn(
+                    "block",
+                    theme.typography.fontFamily.display,
+                    theme.typography.fontWeight.semibold,
+                    theme.typography.fontSize.base,
+                    theme.colors.text.secondary,
+                    "hover:text-indigo-600",
+                    theme.transitions.colors,
+                    "py-2"
+                  )}
                   onClick={toggleMobileMenu}
                 >
                   Benefits
                 </Link>
                 <Link 
                   href="#how-it-works" 
-                  className="block text-base font-semibold text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                  className={cn(
+                    "block",
+                    theme.typography.fontFamily.display,
+                    theme.typography.fontWeight.semibold,
+                    theme.typography.fontSize.base,
+                    theme.colors.text.secondary,
+                    "hover:text-indigo-600",
+                    theme.transitions.colors,
+                    "py-2"
+                  )}
                   onClick={toggleMobileMenu}
                 >
                   How It Works
@@ -195,31 +285,59 @@ export default function MainNavigationBar() {
             
             {isLoggedIn ? (
               <div className="space-y-3">
-                <div className="flex items-center space-x-2 py-2">
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white">
+                <div className={cn(theme.layout.flex.center, "space-x-2 py-2")}>
+                  <div className={cn(
+                    "h-8 w-8",
+                    theme.borderRadius.full,
+                    theme.effects.gradient.primary,
+                    theme.colors.text.white,
+                    theme.layout.flex.center
+                  )}>
                     {user?.avatar ? (
                       <Image 
                         src={user.avatar} 
                         alt={user.name || 'User'} 
                         width={32} 
                         height={32} 
-                        className="rounded-full" 
+                        className={theme.borderRadius.full}
                       />
                     ) : (
                       <span>{user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}</span>
                     )}
                   </div>
-                  <span className="text-sm font-medium">{user?.name || user?.email?.split('@')[0]}</span>
+                  <span className={cn(
+                    theme.typography.fontFamily.display,
+                    theme.typography.fontWeight.medium,
+                    theme.typography.fontSize.sm
+                  )}>{user?.name || user?.email?.split('@')[0]}</span>
                 </div>
                 <Link 
                   href="/my-surveys" 
-                  className="block text-gray-600 hover:text-blue-600 transition-colors py-2"
+                  className={cn(
+                    "block",
+                    theme.typography.fontFamily.display,
+                    theme.typography.fontWeight.semibold,
+                    theme.typography.fontSize.base,
+                    theme.colors.text.secondary,
+                    "hover:text-blue-600",
+                    theme.transitions.colors,
+                    "py-2"
+                  )}
                   onClick={toggleMobileMenu}
                 >
                   My Surveys
                 </Link>
                 <button 
-                  className="w-full text-left text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                  className={cn(
+                    "w-full text-left",
+                    theme.typography.fontFamily.display,
+                    theme.typography.fontWeight.semibold,
+                    theme.typography.fontSize.base,
+                    theme.colors.text.secondary,
+                    "hover:text-indigo-600",
+                    theme.transitions.colors,
+                    "py-2"
+                  )}
                   onClick={() => {
                     toggleMobileMenu();
                     handleLogout();
@@ -231,10 +349,18 @@ export default function MainNavigationBar() {
             ) : (
               <div className="space-y-3">
                 {isLoginPage ? (
-                  // Add content for login page mobile menu
                   <Link 
                     href="/" 
-                    className="block text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                    className={cn(
+                      "block",
+                      theme.typography.fontFamily.display,
+                      theme.typography.fontWeight.semibold,
+                      theme.typography.fontSize.base,
+                      theme.colors.text.secondary,
+                      "hover:text-indigo-600",
+                      theme.transitions.colors,
+                      "py-2"
+                    )}
                     onClick={toggleMobileMenu}
                   >
                     Back to Home
@@ -244,7 +370,16 @@ export default function MainNavigationBar() {
                     {!isLoginPage && (
                       <Link 
                         href="/login" 
-                        className="block text-gray-600 hover:text-indigo-600 transition-colors py-2"
+                        className={cn(
+                          "block",
+                          theme.typography.fontFamily.display,
+                          theme.typography.fontWeight.semibold,
+                          theme.typography.fontSize.base,
+                          theme.colors.text.secondary,
+                          "hover:text-indigo-600",
+                          theme.transitions.colors,
+                          "py-2"
+                        )}
                         onClick={toggleMobileMenu}
                       >
                         Sign up/Log in
@@ -253,7 +388,14 @@ export default function MainNavigationBar() {
                     {pathname !== '/login' && (
                       <Link 
                         href="/login" 
-                        className="block bg-indigo-600 text-white px-4 py-2 rounded-md text-center"
+                        className={cn(
+                          "block",
+                          componentStyles.button.primary,
+                          theme.typography.fontFamily.display,
+                          theme.typography.fontWeight.semibold,
+                          theme.typography.fontSize.base,
+                          "text-center"
+                        )}
                         onClick={toggleMobileMenu}
                       >
                         Get Started

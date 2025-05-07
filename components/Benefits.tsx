@@ -1,3 +1,5 @@
+import { theme, cn } from "@/theme";
+
 export default function Benefits() {
   const benefits = [
     {
@@ -33,13 +35,26 @@ export default function Benefits() {
   ];
 
   return (
-    <section id="benefits" className="py-20 bg-gradient-to-b from-gray-50 to-white">
-      <div className="container mx-auto px-4">
+    <section id="benefits" className={cn(
+      theme.spacing.section.default,
+      "bg-gradient-to-b from-gray-50 to-white"
+    )}>
+      <div className={theme.spacing.container}>
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold font-display tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+          <h2 className={cn(
+            theme.typography.fontSize["4xl"],
+            theme.typography.fontWeight.bold,
+            theme.typography.fontFamily.display,
+            "tracking-tight mb-3",
+            theme.colors.text.gradient
+          )}>
             Why Choose Our Solution
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className={cn(
+            theme.typography.fontSize.lg,
+            theme.colors.text.secondary,
+            "max-w-2xl mx-auto"
+          )}>
             Our hyper-personalized feedback system delivers tangible results for restaurants of all sizes.
           </p>
         </div>
@@ -48,19 +63,43 @@ export default function Benefits() {
           {benefits.map((benefit, index) => (
             <div 
               key={index} 
-              className="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-xl transition-shadow bg-gradient-to-br from-white to-indigo-50/30"
+              className={cn(
+                theme.colors.background.light,
+                "p-6",
+                theme.borderRadius.default,
+                theme.effects.shadow.md,
+                "border border-gray-100",
+                "hover:shadow-xl",
+                theme.transitions.shadow,
+                "bg-gradient-to-br from-white to-indigo-50/30"
+              )}
             >
               <div className="text-4xl mb-4">{benefit.icon}</div>
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">{benefit.title}</h3>
-              <p className="text-gray-600">{benefit.description}</p>
+              <h3 className={cn(
+                theme.typography.fontSize.xl,
+                theme.typography.fontWeight.semibold,
+                "mb-3",
+                theme.colors.text.primary
+              )}>{benefit.title}</h3>
+              <p className={theme.colors.text.secondary}>{benefit.description}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-16 text-center">
           <a 
-            href="#contact" 
-            className="inline-block bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg"
+            href="/login" 
+            className={cn(
+              "inline-block",
+              theme.effects.gradient.primary,
+              "hover:from-indigo-700 hover:to-purple-700",
+              theme.colors.text.white,
+              theme.typography.fontWeight.bold,
+              "py-3 px-8",
+              theme.borderRadius.default,
+              theme.transitions.colors,
+              theme.effects.shadow.lg
+            )}
           >
             Start Your Journey Today
           </a>
