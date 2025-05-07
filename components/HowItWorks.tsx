@@ -27,7 +27,8 @@ export default function HowItWorks() {
   return (
     <section id="how-it-works" className={cn(
       theme.spacing.section.default,
-      "bg-gradient-to-b from-white to-gray-50"
+      "bg-gradient-to-b from-white to-gray-50",
+      "mb-20"
     )}>
       <div className={theme.spacing.container}>
         <div className="text-center mb-16">

@@ -37,7 +37,9 @@ export default function Benefits() {
   return (
     <section id="benefits" className={cn(
       theme.spacing.section.default,
-      "bg-gradient-to-b from-gray-50 to-white"
+      "pt-24",
+      "bg-gradient-to-b from-gray-50 to-white",
+      "mb-20"
     )}>
       <div className={theme.spacing.container}>
         <div className="text-center mb-16">
