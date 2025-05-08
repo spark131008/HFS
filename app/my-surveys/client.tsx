@@ -257,7 +257,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
               theme.colors.text.primary
             )}>All Surveys</h2>
             <div className="flex flex-row gap-3">
-              <Button size="lg" className={componentStyles.button.secondary} asChild>
+              <Button size="lg" className={componentStyles.button.primary} asChild>
                 <Link href="/qr" className="flex items-center justify-center gap-2">
                   <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
                   Show QR Code
