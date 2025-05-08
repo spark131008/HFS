@@ -6,8 +6,10 @@ export default function HeroSection() {
   return (
     <section className={cn(
       "relative overflow-hidden",
+      "pt-28 pb-24",
       theme.spacing.section.default,
-      theme.colors.background.gradient
+      theme.colors.background.gradient,
+      "mb-16"
     )}>
       <div className={theme.spacing.container}>
         <div className="max-w-3xl mx-auto text-center">

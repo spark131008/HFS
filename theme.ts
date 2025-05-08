@@ -32,8 +32,8 @@ const theme = {
   },
   typography: {
     fontFamily: {
-      display: 'font-display',
-      sans: 'font-sans',
+      display: 'font-playfair',
+      sans: 'font-inter',
     },
     fontSize: {
       xs: 'text-xs',
@@ -102,6 +102,7 @@ const theme = {
     primary: 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white transition-colors',
     secondary: 'bg-indigo-600 hover:bg-indigo-700 text-white transition-colors',
     outline: 'border border-indigo-600 text-indigo-600 bg-white hover:bg-indigo-50 transition-colors',
+    secondary2: 'bg-purple-600 hover:bg-purple-700 text-white transition-colors',
   },
 } as const;
 
@@ -127,6 +128,13 @@ const componentStyles = {
       'bg-white',
       'hover:bg-indigo-50',
       theme.transitions.colors
+    ),
+    secondary2: cn(
+      'bg-purple-600',
+      'hover:bg-purple-700',
+      theme.colors.text.white,
+      theme.transitions.colors,
+      'border-purple-300'
     ),
   },
   card: cn(

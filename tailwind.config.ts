@@ -58,7 +58,7 @@ export default {
   		},
   		fontFamily: {
   			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-  			display: ['Plus Jakarta Sans', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  			display: ['Playfair Display', 'serif'],
   		},
   		fontSize: {
   			xs: ['0.75rem', '1rem'],     // 12px
