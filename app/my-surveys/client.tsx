@@ -356,7 +356,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                         </CardContent>
                         <CardFooter className={cn("flex justify-between pt-2 px-4 sm:px-6 border-t border-gray-100")}>
                           <Button variant="outline" size="sm" className={cn("w-[48%] py-3 sm:py-1 h-auto text-sm sm:text-sm")} asChild>
-                            <Link href={`/survey/${survey.id}`}>
+                            <Link href={`/dashboard?id=${survey.id}`}>
                               <BarChart3 className={cn("h-4 w-4 sm:h-3 sm:w-3 mr-2 sm:mr-1")} />
                               Results
                             </Link>
@@ -473,7 +473,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                         </CardContent>
                         <CardFooter className={cn("flex justify-between pt-2 px-4 sm:px-6 border-t border-gray-100")}>
                           <Button variant="outline" size="sm" className={cn("w-[48%] py-3 sm:py-1 h-auto text-sm sm:text-sm")} asChild>
-                            <Link href={`/survey/${survey.id}`}>
+                            <Link href={`/dashboard?id=${survey.id}`}>
                               <BarChart3 className={cn("h-4 w-4 sm:h-3 sm:w-3 mr-2 sm:mr-1")} />
                               Results
                             </Link>

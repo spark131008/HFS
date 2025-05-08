@@ -11,6 +11,12 @@ interface Survey {
   status: string; // 'active', 'active-ready', or 'draft'
 }
 
+// Define the response count interface for our RPC function
+interface ResponseCount {
+  survey_id: number; // Changed to number type since IDs are numeric
+  count: number;
+}
+
 export default async function MySurveysPage() {
   const supabase = await createClient();
   
@@ -32,7 +38,8 @@ export default async function MySurveysPage() {
     );
   }
 
-  const { data: surveys }: { data: Survey[] | null} = await supabase
+  // First get all surveys for this user
+  const { data: surveyData } = await supabase
     .from('survey')
     .select(`
         id, 
@@ -42,20 +49,41 @@ export default async function MySurveysPage() {
         status
     `)
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .then(result => {
-        // Transform the result to match your Survey interface
-        return {
-          data: result.data?.map((item) => ({
-            id: item.id,
-            title: item.title,
-            location: item.location || '',  // Add location with fallback
-            created_at: item.created_at,
-            responses_count: 1,  // Fixed value of 1 for all surveys
-            status: item.status || 'draft' // Use the actual status from database
-          })) || null
-        };
-      });
+    .order('created_at', { ascending: false });
+
+  if (!surveyData || surveyData.length === 0) {
+    return <MySurveysClient initialSurveys={[]} />;
+  }
+
+  // Get response counts for each survey using the RPC function we created
+  // Convert string IDs to numbers if needed
+  const surveyIds = surveyData.map(survey => Number(survey.id));
   
-  return <MySurveysClient initialSurveys={surveys || []} />;
+  const { data: responseCounts, error } = await supabase
+    .rpc('get_survey_response_counts', { survey_ids: surveyIds });
+
+  if (error) {
+    console.error("Error fetching response counts:", error);
+  }
+
+  // Create a map of survey IDs to response counts
+  const responseCountMap = new Map<number, number>();
+  
+  if (responseCounts) {
+    responseCounts.forEach((item: ResponseCount) => {
+      responseCountMap.set(item.survey_id, item.count);
+    });
+  }
+
+  // Transform the survey data to include the correct response counts
+  const surveys: Survey[] = surveyData.map(item => ({
+    id: item.id,
+    title: item.title,
+    location: item.location || '',
+    created_at: item.created_at,
+    responses_count: responseCountMap.get(Number(item.id)) || 0, // Use the actual count or 0 if none
+    status: item.status || 'draft'
+  }));
+  
+  return <MySurveysClient initialSurveys={surveys} />;
 }
