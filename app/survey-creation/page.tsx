@@ -1073,7 +1073,7 @@ export default function SurveyCreationPage() {
       <main className="flex-1 bg-gradient-to-b from-gray-100 to-gray-50 p-8">
         <div className="container mx-auto max-w-7xl">
           <div className="mb-12 text-center">
-            <h1 className="text-4xl font-bold font-display tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+            <h1 className="text-4xl font-bold tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
               {isEditMode ? 'Edit Survey' : 'Create Survey'}
             </h1>
             <p className="text-lg text-gray-600 font-normal">
@@ -1116,7 +1116,7 @@ export default function SurveyCreationPage() {
                   
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-lg font-semibold text-gray-700">Survey Name</Label>
+                      <Label className="text-lg font-semibold text-gray-900">Survey Name</Label>
                       <Input
                         value={surveyName}
                         onChange={e => {
@@ -1129,7 +1129,7 @@ export default function SurveyCreationPage() {
                     </div>
 
                     <div>
-                      <Label className="text-lg font-semibold text-gray-700">Location</Label>
+                      <Label className="text-lg font-semibold text-gray-900">Location</Label>
                       <div className="relative">
                       <Input
                         value={location}
@@ -1145,22 +1145,22 @@ export default function SurveyCreationPage() {
                       />
                         {isAutoSaving && (
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <div className="animate-pulse text-blue-600 text-xs">Saving...</div>
+                            <div className="animate-pulse text-gray-600 text-xs">Saving...</div>
                           </div>
                         )}
                         {lastAutoSaved && !isAutoSaving && (
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <div className="text-green-600 text-xs">Saved</div>
+                            <div className="text-gray-600 text-xs">Saved</div>
                           </div>
                         )}
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-lg font-semibold text-gray-700">Select Questions</Label>
+                      <Label className="text-lg font-semibold text-gray-900">Select Questions</Label>
                       <div className="border rounded-lg p-6 max-h-[400px] overflow-y-auto space-y-4 mt-2 bg-white/50">
                         {selectedQuestionIds.length >= MAX_QUESTIONS && (
-                          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg mb-3">
+                          <div className="bg-yellow-50 border border-yellow-200 text-gray-700 px-4 py-2 rounded-lg mb-3">
                             <p className="text-sm">You&apos;ve selected the maximum of {MAX_QUESTIONS} questions.</p>
                           </div>
                         )}
@@ -1182,7 +1182,7 @@ export default function SurveyCreationPage() {
                                 <div className="flex items-center gap-2">
                                   <p className="font-medium text-gray-900">{question.text}</p>
                                   {question.id.startsWith('custom-') && (
-                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                    <Badge variant="outline" className="bg-purple-50 text-gray-700 border-purple-200">
                                       Custom
                                     </Badge>
                                   )}
@@ -1214,7 +1214,7 @@ export default function SurveyCreationPage() {
                                     variant="outline" 
                                     size="sm" 
                                     onClick={() => handleEditQuestion(question)}
-                                    className="text-indigo-600 hover:bg-indigo-50"
+                                    className="text-gray-600 hover:bg-indigo-50"
                                   >
                                     Edit
                                   </Button>
@@ -1222,7 +1222,7 @@ export default function SurveyCreationPage() {
                                     variant="outline" 
                                     size="sm" 
                                     onClick={() => handleDeleteQuestion(question.id)}
-                                    className="text-red-600 hover:bg-red-50"
+                                    className="text-gray-600 hover:bg-red-50"
                                   >
                                     Delete
                                   </Button>
@@ -1236,10 +1236,10 @@ export default function SurveyCreationPage() {
 
                     <div className="space-y-4 bg-purple-50/50 border border-purple-100 p-6 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-lg font-semibold text-gray-700">
+                        <h4 className="text-lg font-semibold text-gray-900">
                           {isEditing ? 'Edit Custom Question' : 'Add Your Own Custom Question'}
                         </h4>
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        <Badge variant="outline" className="bg-purple-50 text-gray-700 border-purple-200">
                           Custom
                         </Badge>
                       </div>
@@ -1268,7 +1268,7 @@ export default function SurveyCreationPage() {
                               variant="outline" 
                               size="sm"
                               type="button"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="text-gray-600 border-gray-200 hover:bg-red-50"
                             >
                               Clear
                             </Button>
@@ -1298,7 +1298,7 @@ export default function SurveyCreationPage() {
                     {customQuestions.length > 0 && (
                       <div className="bg-white/50 p-6 rounded-lg">
                         <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-lg font-semibold text-gray-700">Custom Questions</h4>
+                          <h4 className="text-lg font-semibold text-gray-900">Custom Questions</h4>
                         </div>
                         
                         <div className="space-y-3">
@@ -1362,7 +1362,7 @@ export default function SurveyCreationPage() {
                         selectedQuestions.map((q, index) => (
                           <div key={q.id} className="p-4 bg-white rounded-lg shadow-sm">
                             <div className="flex items-center gap-3 mb-3">
-                              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 text-sm font-semibold">
+                              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-gray-700 text-sm font-semibold">
                                 Q{index + 1}
                               </span>
                               <p className="font-medium text-gray-900">{q.text}</p>
@@ -1407,8 +1407,7 @@ export default function SurveyCreationPage() {
                       <h3 className="text-2xl font-semibold text-gray-900">Restaurant QR Code</h3>
                       <Button 
                         onClick={handlePrint}
-                        variant="outline"
-                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                        variant="secondary2"
                       >
                         Print QR Code
                       </Button>

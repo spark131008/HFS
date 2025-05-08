@@ -170,7 +170,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <CardTitle className={cn(
                     theme.typography.fontSize.sm,
                     theme.typography.fontWeight.medium,
-                    "sm:text-base flex items-center justify-center sm:justify-start text-blue-700"
+                    "sm:text-base flex items-center justify-center sm:justify-start text-gray-700"
                   )}>
                     <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                     Active
@@ -180,7 +180,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <p className={cn(
                     theme.typography.fontSize["2xl"],
                     theme.typography.fontWeight.bold,
-                    theme.colors.accent.blue,
+                    theme.colors.text.primary,
                     "sm:text-2xl"
                   )}>{activeSurveys.length}</p>
                   <p className={cn(
@@ -198,7 +198,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <CardTitle className={cn(
                     theme.typography.fontSize.sm,
                     theme.typography.fontWeight.medium,
-                    "sm:text-base flex items-center justify-center sm:justify-start text-blue-700"
+                    "sm:text-base flex items-center justify-center sm:justify-start text-gray-700"
                   )}>
                     <XCircle className="h-4 w-4 mr-2 text-gray-500" />
                     Inactive
@@ -208,7 +208,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <p className={cn(
                     theme.typography.fontSize["2xl"],
                     theme.typography.fontWeight.bold,
-                    theme.colors.accent.blue,
+                    theme.colors.text.primary,
                     "sm:text-2xl"
                   )}>{inactiveSurveys.length}</p>
                   <p className={cn(
@@ -226,7 +226,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <CardTitle className={cn(
                     theme.typography.fontSize.sm,
                     theme.typography.fontWeight.medium,
-                    "sm:text-base flex items-center justify-center sm:justify-start text-blue-700"
+                    "sm:text-base flex items-center justify-center sm:justify-start text-gray-700"
                   )}>
                     <Users className="h-4 w-4 mr-2 text-blue-500" />
                     Responses
@@ -236,7 +236,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <p className={cn(
                     theme.typography.fontSize["2xl"],
                     theme.typography.fontWeight.bold,
-                    theme.colors.accent.blue,
+                    theme.colors.text.primary,
                     "sm:text-2xl"
                   )}>{surveys.reduce((sum, survey) => sum + survey.responses_count, 0)}</p>
                   <p className={cn(
@@ -300,7 +300,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                               theme.typography.fontSize.xl,
                               theme.typography.fontWeight.medium,
                               theme.typography.fontFamily.display,
-                              "text-blue-600 line-clamp-1 flex-1"
+                              "text-gray-900 line-clamp-1 flex-1"
                             )}>
                               {survey.title}
                               <span className={cn("hidden sm:inline", theme.colors.text.secondary)}>{survey.location ? ` in ${survey.location}` : ''}</span>
@@ -403,7 +403,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                               theme.typography.fontSize.xl,
                               theme.typography.fontWeight.medium,
                               theme.typography.fontFamily.display,
-                              "text-gray-700 line-clamp-1 flex-1"
+                              "text-gray-900 line-clamp-1 flex-1"
                             )}>
                               {survey.title}
                               <span className={cn("hidden sm:inline", theme.colors.text.secondary)}>{survey.location ? ` in ${survey.location}` : ''}</span>
@@ -502,7 +502,7 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                 theme.typography.fontFamily.display,
                 theme.typography.fontWeight.bold,
                 theme.typography.fontSize.xl,
-                "tracking-tight mb-2 sm:mb-3 text-blue-600"
+                "tracking-tight mb-2 sm:mb-3 text-gray-900"
               )}>No surveys yet</h2>
               <p className={cn(
                 theme.typography.fontSize.base,
