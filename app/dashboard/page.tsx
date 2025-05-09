@@ -4,6 +4,7 @@ import { BarChart, PieChart, DoughnutChart, LineChart } from '@/components/ui/Cl
 import { TrendingUp, Users, Target } from 'lucide-react'
 import { redirect } from "next/navigation"
 import { theme, cn } from "@/theme"
+import MainNavigationBar from "@/components/MainNavigationBar"
 
 // Chart colors aligned with theme
 const CHART_COLORS = {
@@ -194,6 +195,7 @@ export default async function DashboardPage(props: {
 
     return (
       <div className={cn("min-h-screen flex flex-col", theme.colors.background.gradient)}>
+        <MainNavigationBar />
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8")}>
           <div className="mb-8">
             <h1 className={cn(
