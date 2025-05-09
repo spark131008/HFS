@@ -147,12 +147,13 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
             <h1 className={cn(
               theme.typography.fontFamily.display,
               theme.typography.fontWeight.bold,
-              theme.typography.fontSize["3xl"],
-              "tracking-tight mb-2",
+              theme.typography.fontSize["2xl"],
+              "sm:text-4xl tracking-tight mb-1 sm:mb-2",
               theme.colors.text.gradient
             )}>My Surveys</h1>
             <p className={cn(
-              theme.typography.fontSize.base,
+              theme.typography.fontSize.sm,
+              "sm:text-base",
               theme.colors.text.secondary
             )}>
               Welcome back! Manage your surveys and track feedback insights.
@@ -253,20 +254,21 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
             <h2 className={cn(
               theme.typography.fontFamily.display,
               theme.typography.fontWeight.semibold,
-              theme.typography.fontSize.xl,
+              theme.typography.fontSize.lg,
+              "sm:text-xl",
               theme.colors.text.primary
             )}>All Surveys</h2>
-            <div className="flex flex-row gap-3">
-              <Button size="lg" className={componentStyles.button.primary} asChild>
+            <div className="flex flex-row gap-3 w-full sm:w-auto">
+              <Button size="lg" className={cn(componentStyles.button.primary, "w-1/2 sm:w-[160px] justify-center")} asChild>
                 <Link href="/qr" className="flex items-center justify-center gap-2">
                   <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
                   Show QR Code
                 </Link>
               </Button>
-              <Button size="lg" className={componentStyles.button.primary} asChild>
+              <Button size="lg" className={cn(componentStyles.button.primary, "w-1/2 sm:w-[160px] justify-center")} asChild>
                 <Link href="/survey-creation" className="flex items-center justify-center gap-2">
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Create New Survey
+                  New Survey
                 </Link>
               </Button>
             </div>
@@ -280,7 +282,8 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <h3 className={cn(
                     theme.typography.fontFamily.display,
                     theme.typography.fontWeight.medium,
-                    theme.typography.fontSize.xl,
+                    theme.typography.fontSize.lg,
+                    "sm:text-xl",
                     theme.colors.text.primary,
                     "mb-3 sm:mb-4 mt-6 sm:mt-8 flex items-center"
                   )}>
@@ -382,7 +385,8 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                   <h3 className={cn(
                     theme.typography.fontFamily.display,
                     theme.typography.fontWeight.medium,
-                    theme.typography.fontSize.xl,
+                    theme.typography.fontSize.lg,
+                    "sm:text-xl",
                     theme.colors.text.primary,
                     "mb-3 sm:mb-4 mt-6 sm:mt-8 flex items-center"
                   )}>
@@ -502,19 +506,20 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                 theme.typography.fontFamily.display,
                 theme.typography.fontWeight.bold,
                 theme.typography.fontSize.xl,
-                "tracking-tight mb-2 sm:mb-3 text-gray-900"
+                "sm:text-2xl tracking-tight mb-2 sm:mb-3 text-gray-900"
               )}>No surveys yet</h2>
               <p className={cn(
-                theme.typography.fontSize.base,
+                theme.typography.fontSize.sm,
+                "sm:text-base",
                 theme.colors.text.secondary,
                 "max-w-md mx-auto mb-4 sm:mb-6"
               )}>
                 Create your first survey to start collecting valuable feedback from your customers.
               </p>
-              <Button size="lg" className={componentStyles.button.primary} asChild>
+              <Button size="lg" className={cn(componentStyles.button.primary, "w-auto sm:w-[160px] justify-center")} asChild>
                 <Link href="/survey-creation" className="flex items-center justify-center gap-2">
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Create New Survey
+                  New Survey
                 </Link>
               </Button>
             </div>

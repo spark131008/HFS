@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import MySurveysClient from "./client";
+import { redirect } from "next/navigation";
 
 // Define survey interface
 interface Survey {
@@ -23,19 +24,15 @@ export default async function MySurveysPage() {
   // Check authentication
   const { data: { session } } = await supabase.auth.getSession();
   
-  // If not authenticated, show login message instead of redirecting
+  // Redirect to login page if not authenticated
   if (!session) {
-    return (
-      <MySurveysClient initialSurveys={[]} />
-    );
+    redirect('/login');
   }
   
   // Get verified user data from Auth server
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return (
-      <MySurveysClient initialSurveys={[]} />
-    );
+    redirect('/login');
   }
 
   // First get all surveys for this user
