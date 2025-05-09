@@ -71,6 +71,7 @@ export default function SurveyCreationPage() {
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [surveyStatus, setSurveyStatus] = useState<string>('draft');
+  const [restaurantCode, setRestaurantCode] = useState<string | null>(null);
 
   // Check if user is authenticated and get restaurant ID
   useEffect(() => {
@@ -307,6 +308,30 @@ export default function SurveyCreationPage() {
       fetchRestaurantQRCode();
     }
   }, [restaurantId, fetchRestaurantQRCode]);
+
+  // Fetch restaurant code when restaurantId is available
+  useEffect(() => {
+    const fetchRestaurantCode = async () => {
+      if (!restaurantId) return;
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('restaurant_code')
+          .eq('id', restaurantId)
+          .single();
+        if (error) throw error;
+        if (data?.restaurant_code) {
+          setRestaurantCode(data.restaurant_code);
+        }
+      } catch (err) {
+        console.error('Error fetching restaurant code:', err);
+      }
+    };
+    if (restaurantId) {
+      fetchRestaurantCode();
+    }
+  }, [restaurantId]);
 
   // Add print function
   const handlePrint = () => {
@@ -1405,12 +1430,25 @@ export default function SurveyCreationPage() {
                   <CardContent className="p-8">
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-2xl font-semibold text-gray-900">Restaurant QR Code</h3>
-                      <Button 
-                        onClick={handlePrint}
-                        variant="secondary2"
-                      >
-                        Print QR Code
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handlePrint}
+                          variant="secondary2"
+                        >
+                          Print QR Code
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (restaurantCode) {
+                              router.push(`/survey?code=${restaurantCode}`);
+                            }
+                          }}
+                          disabled={!restaurantCode}
+                          variant="secondary2"
+                        >
+                          Go to Live Survey
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex justify-center">
                       <div className="relative w-64 h-64">
