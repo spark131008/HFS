@@ -6,6 +6,9 @@ import { redirect } from "next/navigation"
 import { theme, cn } from "@/theme"
 import MainNavigationBar from "@/components/MainNavigationBar"
 
+// Force dynamic rendering since we use searchParams
+export const dynamic = 'force-dynamic'
+
 // Chart colors aligned with theme
 const CHART_COLORS = {
   primary: 'rgba(79, 70, 229, 0.85)',    // Deep Indigo - from-indigo-600
