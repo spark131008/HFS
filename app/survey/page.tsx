@@ -212,17 +212,17 @@ function SurveyContent() {
     // Don't process if already processing
     if (isProcessingAnswer) return;
 
-    // Trigger animation
+    // Trigger scale up animation
     setClickedEmoji(direction);
 
-    // After animation completes, process answer
+    // After 200ms, scale back down
     setTimeout(() => {
-      handleAnswer(direction);
-      // Reset animation state after processing
+      setClickedEmoji(null);
+      // After scale down completes, process answer
       setTimeout(() => {
-        setClickedEmoji(null);
-      }, 100);
-    }, 300); // 300ms for animation to complete
+        handleAnswer(direction);
+      }, 200); // Wait for scale down transition to complete
+    }, 200); // Scale up duration
   };
 
   // Handle answer submission
@@ -648,9 +648,9 @@ function SurveyContent() {
             gap: '30px'
           }}>
             {/* Fortune cookie image */}
-            <div style={{ 
-              position: 'relative', 
-              width: '100%', 
+            <div style={{
+              position: 'relative',
+              width: '100%',
               height: windowWidth < 768 ? '250px' : '350px',
               display: 'flex',
               justifyContent: 'center',
@@ -659,12 +659,14 @@ function SurveyContent() {
               <Image
                 src={getCurrentImage()}
                 alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350} 
+                width={windowWidth < 768 ? 250 : 350}
                 height={windowWidth < 768 ? 250 : 350}
                 style={{
                   objectFit: 'contain',
                   transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
+                  filter: surveyType === 'operational'
+                    ? 'brightness(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.15))'
+                    : 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
                 }}
                 priority
               />
