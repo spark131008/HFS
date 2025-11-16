@@ -62,19 +62,24 @@ function SurveyContent() {
 
   // For responsive design
   const [windowWidth, setWindowWidth] = useState(0);
-  
+
   // Set up window width measurement
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-    
+
     // Initialize on mount
     handleResize();
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Reset clicked emoji state when question changes
+  useEffect(() => {
+    setClickedEmoji(null);
+  }, [questionIndex]);
   
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
@@ -212,17 +217,11 @@ function SurveyContent() {
     // Don't process if already processing
     if (isProcessingAnswer) return;
 
-    // Trigger scale up animation
+    // Trigger visual feedback and keep it during transition
     setClickedEmoji(direction);
 
-    // After 200ms, scale back down
-    setTimeout(() => {
-      setClickedEmoji(null);
-      // After scale down completes, process answer
-      setTimeout(() => {
-        handleAnswer(direction);
-      }, 200); // Wait for scale down transition to complete
-    }, 200); // Scale up duration
+    // Process answer immediately (visual effect stays until next question loads)
+    handleAnswer(direction);
   };
 
   // Handle answer submission
