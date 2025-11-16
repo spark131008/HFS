@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import MainNavigationBar from "@/components/MainNavigationBar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -19,6 +20,7 @@ interface SurveyProps {
     created_at: string;
     responses_count: number;
     status: string; // 'active', 'active-ready', or 'draft'
+    survey_type?: string; // 'custom' or 'operational'
   }[];
 }
 
@@ -299,15 +301,27 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                         
                         <CardHeader className={cn("pb-2 pt-4 sm:pt-3 px-4 sm:px-6")}>
                           <div className={cn("flex justify-between items-center gap-2")}>
-                            <CardTitle className={cn(
-                              theme.typography.fontSize.xl,
-                              theme.typography.fontWeight.medium,
-                              theme.typography.fontFamily.display,
-                              "text-gray-900 line-clamp-1 flex-1"
-                            )}>
-                              {survey.title}
-                              <span className={cn("hidden sm:inline", theme.colors.text.secondary)}>{survey.location ? ` in ${survey.location}` : ''}</span>
-                            </CardTitle>
+                            <div className="flex-1 flex items-center gap-2 min-w-0">
+                              <CardTitle className={cn(
+                                theme.typography.fontSize.xl,
+                                theme.typography.fontWeight.medium,
+                                theme.typography.fontFamily.display,
+                                "text-gray-900 line-clamp-1"
+                              )}>
+                                {survey.title}
+                                <span className={cn("hidden sm:inline", theme.colors.text.secondary)}>{survey.location ? ` in ${survey.location}` : ''}</span>
+                              </CardTitle>
+                              <Badge
+                                variant="outline"
+                                className={`shrink-0 ${
+                                  survey.survey_type === 'operational'
+                                    ? 'bg-blue-50 border-blue-300 text-blue-800 text-xs'
+                                    : 'bg-purple-50 border-purple-300 text-purple-800 text-xs'
+                                }`}
+                              >
+                                {survey.survey_type === 'operational' ? 'Ops' : 'Custom'}
+                              </Badge>
+                            </div>
                             
                             {/* Mobile deactivate button inline with title (visible only on mobile) */}
                             <div className={cn("sm:hidden")}>
@@ -403,20 +417,32 @@ export default function MySurveysClient({ initialSurveys }: SurveyProps) {
                         
                         <CardHeader className={cn("pb-2 pt-4 sm:pt-3 px-4 sm:px-6")}>
                           <div className={cn("flex justify-between items-center gap-2")}>
-                            <CardTitle className={cn(
-                              theme.typography.fontSize.xl,
-                              theme.typography.fontWeight.medium,
-                              theme.typography.fontFamily.display,
-                              "text-gray-900 line-clamp-1 flex-1"
-                            )}>
-                              {survey.title}
-                              <span className={cn("hidden sm:inline", theme.colors.text.secondary)}>{survey.location ? ` in ${survey.location}` : ''}</span>
-                              {survey.status === 'draft' && (
-                                <span className={cn("ml-1 inline-block px-1 py-0.5 text-xxs sm:text-xs font-medium rounded bg-gray-200 text-gray-700 align-text-top")}>
-                                  DRAFT
-                                </span>
-                              )}
-                            </CardTitle>
+                            <div className="flex-1 flex items-center gap-2 min-w-0">
+                              <CardTitle className={cn(
+                                theme.typography.fontSize.xl,
+                                theme.typography.fontWeight.medium,
+                                theme.typography.fontFamily.display,
+                                "text-gray-900 line-clamp-1"
+                              )}>
+                                {survey.title}
+                                <span className={cn("hidden sm:inline", theme.colors.text.secondary)}>{survey.location ? ` in ${survey.location}` : ''}</span>
+                                {survey.status === 'draft' && (
+                                  <span className={cn("ml-1 inline-block px-1 py-0.5 text-xxs sm:text-xs font-medium rounded bg-gray-200 text-gray-700 align-text-top")}>
+                                    DRAFT
+                                  </span>
+                                )}
+                              </CardTitle>
+                              <Badge
+                                variant="outline"
+                                className={`shrink-0 ${
+                                  survey.survey_type === 'operational'
+                                    ? 'bg-blue-50 border-blue-300 text-blue-800 text-xs'
+                                    : 'bg-purple-50 border-purple-300 text-purple-800 text-xs'
+                                }`}
+                              >
+                                {survey.survey_type === 'operational' ? 'Ops' : 'Custom'}
+                              </Badge>
+                            </div>
                             
                             {/* Mobile activate button inline with title for active-ready surveys */}
                             {survey.status === 'active-ready' && (

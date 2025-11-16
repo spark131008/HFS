@@ -12,6 +12,7 @@ import { redirect } from 'next/navigation'
 import MainNavigationBar from "@/components/MainNavigationBar"
 import { getUserRestaurantInfo } from "@/utils/user-utils"
 import PrintQRCode from "@/components/PrintQRCode"
+import { OPERATIONAL_QUESTIONS } from "@/utils/operational-questions"
 
 // Define database types
 type DBQuestion = {
@@ -73,6 +74,9 @@ export default function SurveyCreationPage() {
   const [surveyStatus, setSurveyStatus] = useState<string>('draft');
   const [restaurantCode, setRestaurantCode] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string | null>(null);
+
+  // Survey type state - 'custom' or 'operational'
+  const [surveyType, setSurveyType] = useState<'custom' | 'operational'>('custom');
 
   // Check if user is authenticated and get restaurant ID
   useEffect(() => {
@@ -353,10 +357,22 @@ export default function SurveyCreationPage() {
 
     try {
       const supabase = createClient();
-      
+
+      // Determine which questions to save based on survey type
+      const questionsToSave = surveyType === 'operational'
+        ? OPERATIONAL_QUESTIONS.map(q => ({
+            id: `operational-${q.id}`,
+            text: q.question_text,
+            options: q.options,
+            category: q.category
+          }))
+        : selectedQuestions;
+
       // Check if survey has enough questions selected to determine status
-      // If fewer than MAX_QUESTIONS, set to draft (this includes zero questions)
-      const hasEnoughQuestions = selectedQuestionIds.length >= MAX_QUESTIONS;
+      // For operational surveys, always true (8 questions). For custom, check against MAX_QUESTIONS
+      const hasEnoughQuestions = surveyType === 'operational'
+        ? true
+        : selectedQuestionIds.length >= MAX_QUESTIONS;
       
       // If in edit mode and current status is 'active' but not enough questions now,
       // we need to downgrade to draft
@@ -381,7 +397,8 @@ export default function SurveyCreationPage() {
           location: location,
           updated_at: new Date().toISOString(),
           status: newStatus,
-          restaurant_id: restaurantId
+          restaurant_id: restaurantId,
+          survey_type: surveyType
         };
 
         console.log("Updating survey record:", JSON.stringify(surveyData, null, 2));
@@ -399,9 +416,9 @@ export default function SurveyCreationPage() {
         }
         
         console.log('Survey record updated successfully');
-        
+
         // Only proceed with question updates if questions are selected
-        if (selectedQuestions.length > 0) {
+        if (questionsToSave.length > 0) {
           // First, fetch the current questions to determine what needs to be updated vs. added/deleted
           const { data: currentQuestions, error: fetchError } = await supabase
             .from('survey_questions')
@@ -426,7 +443,7 @@ export default function SurveyCreationPage() {
           }
           
           // Process each selected question
-          for (const question of selectedQuestions) {
+          for (const question of questionsToSave) {
             // Find if this question already exists in the database
             const existingQuestion = currentQuestions?.find(q => 
               q.question_text === question.text && 
@@ -554,7 +571,8 @@ export default function SurveyCreationPage() {
             location: location,
             updated_at: new Date().toISOString(),
             status: status,
-            restaurant_id: restaurantId
+            restaurant_id: restaurantId,
+            survey_type: surveyType
           };
 
           console.log("Updating auto-saved survey record:", JSON.stringify(surveyData, null, 2));
@@ -572,26 +590,26 @@ export default function SurveyCreationPage() {
           }
           
           console.log('Auto-saved survey record updated successfully');
-          
+
           // Only proceed with question updates if questions are selected
-          if (selectedQuestions.length > 0) {
+          if (questionsToSave.length > 0) {
             // Step 2: Delete any existing questions for this survey from survey_questions
             const { error: deleteError } = await supabase
               .from('survey_questions')
               .delete()
               .eq('survey_id', autoSavedId);
-              
+
             if (deleteError) {
               console.error('Error deleting existing survey questions:', deleteError);
               setError(`Failed to update survey questions: ${deleteError.message}`);
               setIsSaving(false);
               return;
             }
-            
+
             console.log('Existing survey questions deleted successfully');
-            
+
             // Step 3: Insert new questions into survey_questions
-            const surveyQuestionsData = selectedQuestions.map((question) => {
+            const surveyQuestionsData = questionsToSave.map((question) => {
               // For questions from question_bank, store a reference to the question_bank_id
               // For custom questions, question_bank_id will be null
               const questionId = question.id.startsWith('db-') 
@@ -644,7 +662,8 @@ export default function SurveyCreationPage() {
             location: location,
             created_at: new Date().toISOString(),
             status: status,
-            restaurant_id: restaurantId
+            restaurant_id: restaurantId,
+            survey_type: surveyType
           };
 
           console.log("Creating new survey record:", JSON.stringify(surveyData, null, 2));
@@ -671,12 +690,12 @@ export default function SurveyCreationPage() {
           // Extract the new survey ID
           const surveyId = surveyResult[0].id;
           console.log('New survey ID:', surveyId);
-          
+
           // Only proceed with question insertion if questions are selected
-          if (selectedQuestions.length > 0) {
+          if (questionsToSave.length > 0) {
             // Step 2: Insert questions directly to survey_questions
             // For each question, determine if it's from question_bank or custom
-            const surveyQuestionsData = selectedQuestions.map((question) => {
+            const surveyQuestionsData = questionsToSave.map((question) => {
               // For questions from question_bank, store a reference to the question_bank_id
               // For custom questions, question_bank_id will be null
               const questionId = question.id.startsWith('db-') 
@@ -915,10 +934,11 @@ export default function SurveyCreationPage() {
       
       console.log('Fetched survey data:', surveyData);
       
-      // Set survey title, location, and status
+      // Set survey title, location, status, and type
       setSurveyName(surveyData.title || '');
       setLocation(surveyData.location || '');
       setSurveyStatus(surveyData.status || 'draft');
+      setSurveyType(surveyData.survey_type || 'custom');
       
       // 2. First ensure we have dbQuestions loaded before proceeding
       // Instead of using dbQuestions state directly, we'll use dbQuestionsRef
@@ -1137,6 +1157,41 @@ export default function SurveyCreationPage() {
                     </div>
 
                     <div>
+                      <Label className="text-lg font-semibold text-gray-900 mb-3">Survey Type</Label>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          type="button"
+                          variant={surveyType === 'custom' ? 'default' : 'outline'}
+                          onClick={() => setSurveyType('custom')}
+                          className={surveyType === 'custom'
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex-1'
+                            : 'flex-1'}
+                        >
+                          Custom Survey
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={surveyType === 'operational' ? 'default' : 'outline'}
+                          onClick={() => setSurveyType('operational')}
+                          className={surveyType === 'operational'
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex-1'
+                            : 'flex-1'}
+                        >
+                          Operational Check
+                        </Button>
+                      </div>
+                      {surveyType === 'operational' && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>Operational Check:</strong> All 8 standardized quality questions will be included automatically.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {surveyType === 'custom' ? (
+                      <>
+                    <div>
                       <Label className="text-lg font-semibold text-gray-900">Select Questions</Label>
                       <div className="border rounded-lg p-6 max-h-[400px] overflow-y-auto space-y-4 mt-2 bg-white/50">
                         {selectedQuestionIds.length >= MAX_QUESTIONS && (
@@ -1280,7 +1335,38 @@ export default function SurveyCreationPage() {
                         )}
                       </div>
                     </div>
-                    
+                      </>
+                    ) : (
+                      <div>
+                        <Label className="text-lg font-semibold text-gray-900">Operational Questions Preview</Label>
+                        <div className="border rounded-lg p-6 max-h-[500px] overflow-y-auto space-y-3 mt-2 bg-white/50">
+                          {OPERATIONAL_QUESTIONS.map((question, index) => (
+                            <div key={question.id} className="p-4 bg-white rounded-lg shadow-sm">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-gray-700 text-sm font-semibold">
+                                  {index + 1}
+                                </span>
+                                <div>
+                                  <p className="font-medium text-gray-900">{question.question_text}</p>
+                                  {question.category && (
+                                    <p className="text-xs text-gray-500 mt-1">{question.category}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="ml-11">
+                                <p className="text-sm text-gray-600">Options: {question.options.join(' / ')}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm text-green-800">
+                            ✓ All {OPERATIONAL_QUESTIONS.length} operational quality check questions will be automatically included in this survey.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <Button
                       onClick={saveSurveyToDatabase}
                       disabled={isSaving}
@@ -1303,10 +1389,37 @@ export default function SurveyCreationPage() {
                     <div className="p-4 bg-white/50 rounded-lg">
                       <p className="text-gray-700"><span className="font-semibold">Name:</span> {surveyName || 'Not set'}</p>
                       <p className="text-gray-700"><span className="font-semibold">Location:</span> {location || 'Not set'}</p>
+                      <p className="text-gray-700">
+                        <span className="font-semibold">Type:</span>
+                        <Badge variant="outline" className={`ml-2 ${surveyType === 'operational' ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-purple-50 border-purple-300 text-purple-800'}`}>
+                          {surveyType === 'operational' ? 'Operational Check' : 'Custom'}
+                        </Badge>
+                      </p>
                     </div>
-                    
+
                     <div className="space-y-4">
-                      {selectedQuestions.length > 0 ? (
+                      {surveyType === 'operational' ? (
+                        OPERATIONAL_QUESTIONS.map((q, index) => (
+                          <div key={q.id} className="p-4 bg-white rounded-lg shadow-sm">
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-gray-700 text-sm font-semibold">
+                                Q{index + 1}
+                              </span>
+                              <div>
+                                <p className="font-medium text-gray-900">{q.question_text}</p>
+                                {q.category && (
+                                  <p className="text-xs text-gray-500 mt-1">{q.category}</p>
+                                )}
+                              </div>
+                            </div>
+                            <ul className="list-disc ml-6 text-sm text-gray-600">
+                              {q.options.map((o, i) => (
+                                <li key={i}>{o}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))
+                      ) : selectedQuestions.length > 0 ? (
                         selectedQuestions.map((q, index) => (
                           <div key={q.id} className="p-4 bg-white rounded-lg shadow-sm">
                             <div className="flex items-center gap-3 mb-3">

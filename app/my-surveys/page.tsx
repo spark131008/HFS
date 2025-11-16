@@ -10,6 +10,7 @@ interface Survey {
   created_at: string;
   responses_count: number;
   status: string; // 'active', 'active-ready', or 'draft'
+  survey_type?: string; // 'custom' or 'operational'
 }
 
 // Define the response count interface for our RPC function
@@ -39,11 +40,12 @@ export default async function MySurveysPage() {
   const { data: surveyData } = await supabase
     .from('survey')
     .select(`
-        id, 
+        id,
         title,
         location,
         created_at,
-        status
+        status,
+        survey_type
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
@@ -79,7 +81,8 @@ export default async function MySurveysPage() {
     location: item.location || '',
     created_at: item.created_at,
     responses_count: responseCountMap.get(Number(item.id)) || 0, // Use the actual count or 0 if none
-    status: item.status || 'draft'
+    status: item.status || 'draft',
+    survey_type: item.survey_type || 'custom'
   }));
   
   return <MySurveysClient initialSurveys={surveys} />;

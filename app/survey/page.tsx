@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { useSearchParams } from 'next/navigation';
+import { OPERATIONAL_QUESTIONS } from '@/utils/operational-questions';
 
 export default function Home() {
   return (
@@ -32,6 +33,7 @@ function SurveyContent() {
   // State for survey data
   const [surveyTitle, setSurveyTitle] = useState<string>('');
   const [surveyLocation, setSurveyLocation] = useState<string>('');
+  const [surveyType, setSurveyType] = useState<'custom' | 'operational'>('custom');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,9 +50,11 @@ function SurveyContent() {
   // For swipe gestures
   const [isSwiping, setIsSwiping] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   const touchEndX = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartTime = useRef(0);
   
   // For responsive design
   const [windowWidth, setWindowWidth] = useState(0);
@@ -103,6 +107,7 @@ function SurveyContent() {
             id,
             title,
             location,
+            survey_type,
             survey_questions (
               id,
               question_text,
@@ -122,14 +127,20 @@ function SurveyContent() {
           return;
         }
 
-        // Sort questions by position if available
-        const sortedQuestions = surveys.survey_questions
-          .sort((a, b) => (a.position || 0) - (b.position || 0))
-          .map(q => q.question_text);
+        // Set survey type
+        setSurveyType(surveys.survey_type || 'custom');
+
+        // Load questions based on survey type
+        const sortedQuestions = surveys.survey_type === 'operational'
+          ? OPERATIONAL_QUESTIONS.map(q => q.question_text)
+          : surveys.survey_questions
+              .sort((a, b) => (a.position || 0) - (b.position || 0))
+              .map(q => q.question_text);
 
         console.log('Fetched survey data:', {
           title: surveys.title,
           location: surveys.location,
+          surveyType: surveys.survey_type,
           questions: sortedQuestions
         });
 
@@ -257,37 +268,68 @@ function SurveyContent() {
     }
   }, [questionIndex, questions, answers, restaurantCode, isProcessingAnswer]);
   
-  // Swipe detection handlers
+  // Swipe detection handlers with velocity and smooth animations
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = Date.now();
+    touchEndX.current = touchStartX.current;
     setIsSwiping(true);
   };
-  
+
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isSwiping) return;
+
     touchEndX.current = e.touches[0].clientX;
-    
     const swipeDistance = touchEndX.current - touchStartX.current;
-    
+    const swipeDistanceY = Math.abs(e.touches[0].clientY - touchStartY.current);
+
+    // Prevent vertical scrolling if horizontal swipe is detected
+    if (Math.abs(swipeDistance) > swipeDistanceY && Math.abs(swipeDistance) > 10) {
+      e.preventDefault();
+    }
+
+    // Update swipe offset for real-time card movement
+    setSwipeOffset(swipeDistance);
+
+    // Set swipe direction for visual feedback
     if (Math.abs(swipeDistance) > 30) {
       setSwipeDirection(swipeDistance > 0 ? 'right' : 'left');
     } else {
       setSwipeDirection(null);
     }
   };
-  
+
   const handleTouchEnd = () => {
-    setIsSwiping(false);
-    
+    if (!isSwiping) return;
+
     const swipeDistance = touchEndX.current - touchStartX.current;
-    const minSwipeDistance = 75;
-    
-    if (Math.abs(swipeDistance) > minSwipeDistance) {
+    const swipeTime = Date.now() - touchStartTime.current;
+    const velocity = Math.abs(swipeDistance) / swipeTime; // pixels per millisecond
+
+    // Velocity-based threshold: fast swipes require less distance
+    const screenWidth = window.innerWidth;
+    const percentThreshold = screenWidth * 0.3;
+    const swipeThreshold = velocity > 0.5
+      ? Math.min(50, percentThreshold)
+      : Math.max(100, percentThreshold);
+
+    setIsSwiping(false);
+
+    if (Math.abs(swipeDistance) > swipeThreshold) {
       const direction = swipeDistance > 0 ? 'right' : 'left';
-      handleAnswer(direction);
+      // Animate card off screen before processing answer
+      setSwipeOffset(swipeDistance > 0 ? screenWidth : -screenWidth);
+      setTimeout(() => {
+        handleAnswer(direction);
+        setSwipeOffset(0);
+        setSwipeDirection(null);
+      }, 250);
+    } else {
+      // Spring back animation
+      setSwipeOffset(0);
+      setSwipeDirection(null);
     }
-    
-    setSwipeDirection(null);
   };
   
   // Effect to handle image changes when survey is completed
@@ -297,66 +339,30 @@ function SurveyContent() {
     }
   }, [finished]);
   
-  // Effect to handle touch events
-  useEffect(() => {
-    const element = containerRef.current;
-    
-    if (!element || !showQuestions || finished) return;
-    
-    const touchStart = (e: TouchEvent) => {
-      touchStartX.current = e.touches[0].clientX;
-      setIsSwiping(true);
-    };
-    
-    const touchMove = (e: TouchEvent) => {
-      if (!isSwiping) return;
-      touchEndX.current = e.touches[0].clientX;
-      
-      const swipeDistance = touchEndX.current - touchStartX.current;
-      
-      if (Math.abs(swipeDistance) > 30) {
-        setSwipeDirection(swipeDistance > 0 ? 'right' : 'left');
-      } else {
-        setSwipeDirection(null);
-      }
-    };
-    
-    const touchEnd = () => {
-      if (!isSwiping) return;
-      setIsSwiping(false);
-      
-      const swipeDistance = touchEndX.current - touchStartX.current;
-      const minSwipeDistance = 75;
-      
-      if (Math.abs(swipeDistance) > minSwipeDistance) {
-        const direction = swipeDistance > 0 ? 'right' : 'left';
-        handleAnswer(direction);
-      }
-      
-      setSwipeDirection(null);
-    };
-    
-    // Add event listeners
-    element.addEventListener('touchstart', touchStart);
-    element.addEventListener('touchmove', touchMove);
-    element.addEventListener('touchend', touchEnd);
-    
-    return () => {
-      // Clean up event listeners
-      element.removeEventListener('touchstart', touchStart);
-      element.removeEventListener('touchmove', touchMove);
-      element.removeEventListener('touchend', touchEnd);
-    };
-  }, [showQuestions, finished, isSwiping, questionIndex, handleAnswer]); // Added questionIndex and handleAnswer to dependency array
-  
-  // Get swipe direction indicator styles
-  const getSwipeIndicatorStyles = () => {
-    if (!swipeDirection) return {};
-    
+  // Calculate card transform based on swipe offset
+  const getCardTransform = () => {
+    if (swipeOffset === 0) return {};
+
+    const rotation = swipeOffset / 20; // Rotation based on swipe distance
+    const opacity = Math.max(0.5, 1 - Math.abs(swipeOffset) / 400);
+
     return {
-      background: swipeDirection === 'left' 
-        ? 'linear-gradient(to left, transparent, rgba(235, 37, 42, 0.2))'
-        : 'linear-gradient(to right, transparent, rgba(235, 37, 42, 0.2))',
+      transform: `translateX(${swipeOffset}px) rotate(${rotation}deg)`,
+      opacity: opacity,
+      transition: isSwiping ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+    };
+  };
+
+  // Get swipe direction indicator styles with improved visuals
+  const getSwipeIndicatorStyles = () => {
+    const intensity = Math.min(Math.abs(swipeOffset) / 150, 1);
+
+    if (!swipeDirection || intensity < 0.2) return { opacity: 0 };
+
+    return {
+      background: swipeDirection === 'left'
+        ? `linear-gradient(to left, transparent 0%, rgba(255, 75, 75, ${intensity * 0.4}) 100%)`
+        : `linear-gradient(to right, transparent 0%, rgba(75, 255, 75, ${intensity * 0.4}) 100%)`,
       position: 'absolute',
       top: 0,
       left: 0,
@@ -364,7 +370,11 @@ function SurveyContent() {
       bottom: 0,
       zIndex: 1,
       pointerEvents: 'none',
-      transition: 'all 0.2s ease'
+      transition: isSwiping ? 'none' : 'opacity 0.3s ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: swipeDirection === 'left' ? 'flex-start' : 'flex-end',
+      padding: '20px'
     };
   };
 
@@ -427,8 +437,7 @@ function SurveyContent() {
       }}
     >
       {/* Main container */}
-      <div 
-        ref={containerRef}
+      <div
         style={{
           position: 'relative',
           maxWidth: '650px',
@@ -438,18 +447,30 @@ function SurveyContent() {
           background: '#000000',
           boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
           padding: finished ? '40px' : windowWidth < 768 ? '30px 20px' : '60px 40px',
-          transition: 'all 0.4s ease',
           touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          ...(showQuestions && !finished ? getCardTransform() : {})
         }}
         onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
         onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
         onTouchEnd={showQuestions && !finished ? handleTouchEnd : undefined}
       >
-        {/* Swipe direction indicator overlay */}
+        {/* Swipe direction indicator overlay with visual feedback */}
         {swipeDirection && (
-          <div style={getSwipeIndicatorStyles() as React.CSSProperties} />
+          <div style={getSwipeIndicatorStyles() as React.CSSProperties}>
+            <div style={{
+              fontSize: '48px',
+              fontWeight: 'bold',
+              color: swipeDirection === 'left' ? '#ff4b4b' : '#4bff4b',
+              textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)',
+              transform: 'scale(1)',
+              animation: 'pulse 0.5s ease infinite',
+              zIndex: 2
+            }}>
+              {swipeDirection === 'left' ? '←' : '→'}
+            </div>
+          </div>
         )}
         
         {/* Initial screen */}
@@ -628,7 +649,7 @@ function SurveyContent() {
                     e.currentTarget.style.color = '#ffffff';
                   } : undefined}
                 >
-                  Left
+                  {surveyType === 'operational' ? 'Not Satisfied' : 'Left'}
                 </button>
                 <button 
                   onClick={windowWidth >= 768 ? () => handleAnswer('right') : undefined}
@@ -657,7 +678,7 @@ function SurveyContent() {
                     e.currentTarget.style.color = '#ffffff';
                   } : undefined}
                 >
-                  Right
+                  {surveyType === 'operational' ? 'Satisfied' : 'Right'}
                 </button>
               </div>
               
@@ -835,13 +856,18 @@ function SurveyContent() {
         </div>
       )}
       
-      {/* Style for fade-in animation */}
+      {/* Styles for animations */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+
         body {
           margin: 0;
           padding: 0;

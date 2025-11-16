@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/utils/supabase/server"
 import { BarChart, PieChart, DoughnutChart, LineChart } from '@/components/ui/ClientChartWrapper'
 import { TrendingUp, Users, Target } from 'lucide-react'
@@ -58,7 +59,7 @@ export default async function DashboardPage(props: {
     // Check if survey belongs to current user
     const { data: surveyData } = await supabase
       .from('survey')
-      .select('id, title, user_id')
+      .select('id, title, user_id, survey_type')
       .eq('id', surveyId)
       .single()
     
@@ -152,9 +153,11 @@ export default async function DashboardPage(props: {
         total: value.responses.reduce((sum, val) => sum + val, 0)
       }))
       .sort((a, b) => b.total - a.total)
-    
-    // Get top 3 questions for main charts, or all if less than 3
-    const topQuestions = sortedQuestions.slice(0, Math.min(3, sortedQuestions.length))
+
+    // Get top questions for main charts
+    // For operational surveys, show all 8. For custom surveys, show top 3
+    const questionLimit = surveyData.survey_type === 'operational' ? 8 : 3
+    const topQuestions = sortedQuestions.slice(0, Math.min(questionLimit, sortedQuestions.length))
     
     // Time-based data for trend analysis
     const responseDates = responseData?.map(r => {
@@ -201,15 +204,27 @@ export default async function DashboardPage(props: {
         <MainNavigationBar />
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8")}>
           <div className="mb-8">
-            <h1 className={cn(
-              theme.typography.fontFamily.display,
-              theme.typography.fontWeight.bold,
-              theme.typography.fontSize["3xl"],
-              "tracking-tight mb-2",
-              theme.colors.text.gradient
-            )}>
-              {surveyData.title} - Dashboard
-            </h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className={cn(
+                theme.typography.fontFamily.display,
+                theme.typography.fontWeight.bold,
+                theme.typography.fontSize["3xl"],
+                "tracking-tight",
+                theme.colors.text.gradient
+              )}>
+                {surveyData.title} - Dashboard
+              </h1>
+              <Badge
+                variant="outline"
+                className={`${
+                  surveyData.survey_type === 'operational'
+                    ? 'bg-blue-50 border-blue-300 text-blue-800'
+                    : 'bg-purple-50 border-purple-300 text-purple-800'
+                }`}
+              >
+                {surveyData.survey_type === 'operational' ? 'Operational Check' : 'Custom'}
+              </Badge>
+            </div>
             <p className={cn(
               theme.typography.fontSize.base,
               theme.colors.text.secondary
