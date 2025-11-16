@@ -56,7 +56,10 @@ function SurveyContent() {
   const touchStartY = useRef(0);
   const touchEndX = useRef(0);
   const touchStartTime = useRef(0);
-  
+
+  // For emoji click animation
+  const [clickedEmoji, setClickedEmoji] = useState<'left' | 'right' | null>(null);
+
   // For responsive design
   const [windowWidth, setWindowWidth] = useState(0);
   
@@ -202,6 +205,24 @@ function SurveyContent() {
   // Handle the "Start" button click
   const handleStart = () => {
     setShowQuestions(true);
+  };
+
+  // Handle emoji click with animation
+  const handleEmojiClick = (direction: 'left' | 'right') => {
+    // Don't process if already processing
+    if (isProcessingAnswer) return;
+
+    // Trigger animation
+    setClickedEmoji(direction);
+
+    // After animation completes, process answer
+    setTimeout(() => {
+      handleAnswer(direction);
+      // Reset animation state after processing
+      setTimeout(() => {
+        setClickedEmoji(null);
+      }, 100);
+    }, 300); // 300ms for animation to complete
   };
 
   // Handle answer submission
@@ -674,24 +695,29 @@ function SurveyContent() {
               }}>
                 {/* Left emoji - clickable */}
                 <div
-                  onClick={() => handleAnswer('left')}
+                  onClick={() => handleEmojiClick('left')}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     gap: '8px',
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    opacity: 0.7,
-                    transform: 'scale(1)'
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    opacity: clickedEmoji === 'left' ? 1 : 0.7,
+                    transform: clickedEmoji === 'left' ? 'scale(1.4)' : 'scale(1)',
+                    filter: clickedEmoji === 'left' ? 'brightness(1.5) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))' : 'none'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.opacity = '1';
-                    e.currentTarget.style.transform = 'scale(1.1)';
+                    if (clickedEmoji !== 'left') {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.opacity = '0.7';
-                    e.currentTarget.style.transform = 'scale(1)';
+                    if (clickedEmoji !== 'left') {
+                      e.currentTarget.style.opacity = '0.7';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }
                   }}
                 >
                   <div style={{ fontSize: '48px' }}>😞</div>
@@ -709,24 +735,29 @@ function SurveyContent() {
 
                 {/* Right emoji - clickable */}
                 <div
-                  onClick={() => handleAnswer('right')}
+                  onClick={() => handleEmojiClick('right')}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     gap: '8px',
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    opacity: 0.7,
-                    transform: 'scale(1)'
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    opacity: clickedEmoji === 'right' ? 1 : 0.7,
+                    transform: clickedEmoji === 'right' ? 'scale(1.4)' : 'scale(1)',
+                    filter: clickedEmoji === 'right' ? 'brightness(1.5) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))' : 'none'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.opacity = '1';
-                    e.currentTarget.style.transform = 'scale(1.1)';
+                    if (clickedEmoji !== 'right') {
+                      e.currentTarget.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.opacity = '0.7';
-                    e.currentTarget.style.transform = 'scale(1)';
+                    if (clickedEmoji !== 'right') {
+                      e.currentTarget.style.opacity = '0.7';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }
                   }}
                 >
                   <div style={{ fontSize: '48px' }}>😊</div>
