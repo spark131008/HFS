@@ -170,8 +170,15 @@ function SurveyContent() {
 
   // Get the current image based on the question index
   const getCurrentImage = () => {
-    if (!showQuestions) return "/survey/1.png"; // Initial screen
-    if (finished) return "/survey/4.png";       // End screen - changed to 4.png
+    // Initial screen - show logo for operational, fortune cookie for custom
+    if (!showQuestions) {
+      return surveyType === 'operational'
+        ? "/operational/Mylapore_logo.PNG"
+        : "/survey/1.png";
+    }
+
+    // End screen - show fortune cookie for both types
+    if (finished) return "/survey/4.png";
 
     // For operational surveys, use contextual images
     if (surveyType === 'operational' && questionIndex < OPERATIONAL_QUESTIONS.length) {
