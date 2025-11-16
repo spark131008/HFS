@@ -663,130 +663,85 @@ function SurveyContent() {
                 {questions[questionIndex]}
               </h2>
               
-              {/* Swipe indicators on sides - always visible as hints */}
+              {/* Clickable emoji indicators - work on both mobile and desktop */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '20px',
-                padding: '0 20px',
-                opacity: 0.4
+                padding: '0 30px',
+                gap: '20px'
               }}>
-                {/* Left indicator */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <div style={{ fontSize: '32px' }}>😞</div>
+                {/* Left emoji - clickable */}
+                <div
+                  onClick={() => handleAnswer('left')}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    opacity: 0.7,
+                    transform: 'scale(1)'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.opacity = '0.7';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{ fontSize: '48px' }}>😞</div>
                   <div style={{
-                    fontSize: '11px',
+                    fontSize: '12px',
                     color: '#ffffff',
                     textTransform: 'uppercase',
                     letterSpacing: '1px',
-                    fontWeight: 500
+                    fontWeight: 600,
+                    textAlign: 'center'
                   }}>
                     {surveyType === 'operational' ? 'Not Satisfied' : 'Left'}
                   </div>
-                  {windowWidth < 768 && (
-                    <div style={{ fontSize: '18px', opacity: 0.6 }}>←</div>
-                  )}
                 </div>
 
-                {/* Right indicator */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <div style={{ fontSize: '32px' }}>😊</div>
+                {/* Right emoji - clickable */}
+                <div
+                  onClick={() => handleAnswer('right')}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    opacity: 0.7,
+                    transform: 'scale(1)'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.opacity = '0.7';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{ fontSize: '48px' }}>😊</div>
                   <div style={{
-                    fontSize: '11px',
+                    fontSize: '12px',
                     color: '#ffffff',
                     textTransform: 'uppercase',
                     letterSpacing: '1px',
-                    fontWeight: 500
+                    fontWeight: 600,
+                    textAlign: 'center'
                   }}>
                     {surveyType === 'operational' ? 'Satisfied' : 'Right'}
                   </div>
-                  {windowWidth < 768 && (
-                    <div style={{ fontSize: '18px', opacity: 0.6 }}>→</div>
-                  )}
                 </div>
               </div>
-
-              {/* Desktop-only clickable buttons (hidden on mobile) */}
-              {windowWidth >= 768 && (
-                <div style={{
-                  display: 'flex',
-                  gap: '20px',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <button
-                    onClick={() => handleAnswer('left')}
-                    style={{
-                      padding: '12px 24px',
-                      cursor: 'pointer',
-                      background: 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      borderRadius: '50px',
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      fontWeight: 500,
-                      fontSize: '13px',
-                      letterSpacing: '1px',
-                      textTransform: 'uppercase',
-                      transition: 'all 0.25s ease',
-                      flex: 1,
-                      maxWidth: '140px'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.6)';
-                      e.currentTarget.style.color = '#ffffff';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                      e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
-                    }}
-                  >
-                    {surveyType === 'operational' ? 'Not Satisfied' : 'Left'}
-                  </button>
-                  <button
-                    onClick={() => handleAnswer('right')}
-                    style={{
-                      padding: '12px 24px',
-                      cursor: 'pointer',
-                      background: 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      borderRadius: '50px',
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      fontWeight: 500,
-                      fontSize: '13px',
-                      letterSpacing: '1px',
-                      textTransform: 'uppercase',
-                      transition: 'all 0.25s ease',
-                      flex: 1,
-                      maxWidth: '140px'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.6)';
-                      e.currentTarget.style.color = '#ffffff';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                      e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
-                    }}
-                  >
-                    {surveyType === 'operational' ? 'Satisfied' : 'Right'}
-                  </button>
-                </div>
-              )}
               
               {/* Progress indicator */}
               <div style={{ 
