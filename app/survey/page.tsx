@@ -706,7 +706,7 @@ function SurveyContent() {
                     cursor: 'pointer',
                     transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                     opacity: clickedEmoji === 'left' ? 1 : 0.7,
-                    transform: clickedEmoji === 'left' ? 'scale(1.4)' : 'scale(1)',
+                    transform: clickedEmoji === 'left' ? 'scale(1.2)' : 'scale(1)',
                     filter: clickedEmoji === 'left' ? 'brightness(1.5) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))' : 'none'
                   }}
                   onMouseEnter={e => {
@@ -746,7 +746,7 @@ function SurveyContent() {
                     cursor: 'pointer',
                     transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                     opacity: clickedEmoji === 'right' ? 1 : 0.7,
-                    transform: clickedEmoji === 'right' ? 'scale(1.4)' : 'scale(1)',
+                    transform: clickedEmoji === 'right' ? 'scale(1.2)' : 'scale(1)',
                     filter: clickedEmoji === 'right' ? 'brightness(1.5) drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))' : 'none'
                   }}
                   onMouseEnter={e => {
