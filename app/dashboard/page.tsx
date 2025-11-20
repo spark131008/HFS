@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/utils/supabase/server"
-import { BarChart, PieChart, DoughnutChart, LineChart } from '@/components/ui/ClientChartWrapper'
+import { LineChart } from '@/components/ui/ClientChartWrapper'
 import { TrendingUp, Users, Target } from 'lucide-react'
 import { redirect } from "next/navigation"
 import { theme, cn } from "@/theme"
@@ -153,11 +153,6 @@ export default async function DashboardPage(props: {
         total: value.responses.reduce((sum, val) => sum + val, 0)
       }))
       .sort((a, b) => b.total - a.total)
-
-    // Get top questions for main charts
-    // For operational surveys, show all 8. For custom surveys, show top 3
-    const questionLimit = surveyData.survey_type === 'operational' ? 8 : 3
-    const topQuestions = sortedQuestions.slice(0, Math.min(questionLimit, sortedQuestions.length))
     
     // Time-based data for trend analysis
     const responseDates = responseData?.map(r => {
@@ -204,13 +199,15 @@ export default async function DashboardPage(props: {
         <MainNavigationBar />
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8")}>
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
               <h1 className={cn(
                 theme.typography.fontFamily.display,
                 theme.typography.fontWeight.bold,
-                theme.typography.fontSize["3xl"],
+                theme.typography.fontSize["2xl"],
+                "sm:text-3xl",
                 "tracking-tight",
-                theme.colors.text.gradient
+                theme.colors.text.gradient,
+                "break-words"
               )}>
                 {surveyData.title} - Dashboard
               </h1>
@@ -220,7 +217,7 @@ export default async function DashboardPage(props: {
                   surveyData.survey_type === 'operational'
                     ? 'bg-blue-50 border-blue-300 text-blue-800'
                     : 'bg-purple-50 border-purple-300 text-purple-800'
-                }`}
+                } w-fit`}
               >
                 {surveyData.survey_type === 'operational' ? 'Operational Check' : 'Custom'}
               </Badge>
@@ -234,7 +231,7 @@ export default async function DashboardPage(props: {
           </div>
           
           {/* Statistics Cards */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-6 mb-8">
             <Card className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className={cn(
@@ -320,8 +317,8 @@ export default async function DashboardPage(props: {
                   )}>
                     {conversionRate}%
                   </div>
-                  <div className="flex items-center mt-1">
-                    <div className="w-16 h-1 rounded-full bg-gray-100 mr-2">
+                  <div className="flex items-center mt-1 flex-wrap gap-1">
+                    <div className="w-12 sm:w-16 h-1 rounded-full bg-gray-100">
                       <div 
                         className="h-full bg-green-600 rounded-full" 
                         style={{ width: `${Math.min(Number(conversionRate), 100)}%` }}
@@ -366,9 +363,10 @@ export default async function DashboardPage(props: {
               {/* Response Trends */}
               <div className="mb-8">
                 <Card className={cn("border border-gray-200", theme.effects.shadow.sm)}>
-                  <CardHeader>
+                  <CardHeader className="p-4 sm:p-6">
                     <CardTitle className={cn(
-                      theme.typography.fontSize.xl,
+                      theme.typography.fontSize.lg,
+                      "sm:text-xl",
                       theme.typography.fontWeight.semibold,
                       theme.typography.fontFamily.display,
                       theme.colors.text.primary
@@ -376,24 +374,31 @@ export default async function DashboardPage(props: {
                       Response Trends Over Time
                     </CardTitle>
                     <p className={cn(
-                      theme.typography.fontSize.sm,
+                      theme.typography.fontSize.xs,
+                      "sm:text-sm",
                       theme.colors.text.secondary,
                       "mt-1 font-medium"
                     )}>
                       Daily response volume
                     </p>
                   </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="h-[300px] w-full flex justify-center items-center">
-                      <div className="relative w-full max-w-[800px]">
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="h-[250px] sm:h-[300px] w-full flex justify-center items-center overflow-x-auto">
+                      <div className="relative w-full min-w-[280px] max-w-[800px]">
                         <LineChart 
                           data={timeChartData}
                           options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
                             scales: {
                               x: {
                                 title: {
                                   display: true,
                                   text: 'Date'
+                                },
+                                ticks: {
+                                  maxRotation: 45,
+                                  minRotation: 45
                                 }
                               },
                               y: {
@@ -415,90 +420,14 @@ export default async function DashboardPage(props: {
                 </Card>
               </div>
 
-              {/* Top Questions Analysis */}
-              {topQuestions.length > 0 && (
-                <div className="grid md:grid-cols-3 gap-6 mb-8">
-                  {topQuestions.map((question, index) => (
-                    <Card key={index} className={cn("border border-gray-200", theme.effects.shadow.sm)}>
-                      <CardHeader>
-                        <CardTitle className={cn(
-                          theme.typography.fontSize.xl,
-                          theme.typography.fontWeight.semibold,
-                          theme.typography.fontFamily.display,
-                          theme.colors.text.primary
-                        )}>
-                          {question.question}
-                        </CardTitle>
-                        <p className={cn(
-                          theme.typography.fontSize.sm,
-                          theme.colors.text.secondary,
-                          "mt-1 font-medium"
-                        )}>
-                          {question.total} total responses
-                        </p>
-                      </CardHeader>
-                      <CardContent className="p-6">
-                        <div className="h-[280px] w-full flex justify-center items-center">
-                          <div className="relative w-full max-w-[300px]">
-                            {index % 3 === 0 ? (
-                              <PieChart data={{
-                                labels: question.options,
-                                datasets: [{
-                                  data: question.responses,
-                                  backgroundColor: [
-                                    CHART_COLORS.primary,
-                                    CHART_COLORS.secondary,
-                                  ],
-                                  borderWidth: 0,
-                                  hoverOffset: 4
-                                }]
-                              }} />
-                            ) : index % 3 === 1 ? (
-                              <DoughnutChart data={{
-                                labels: question.options,
-                                datasets: [{
-                                  data: question.responses,
-                                  backgroundColor: [
-                                    CHART_COLORS.info,
-                                    CHART_COLORS.success,
-                                  ],
-                                  borderWidth: 0,
-                                  hoverOffset: 10
-                                }]
-                              }} />
-                            ) : (
-                              <BarChart 
-                                horizontal={true}
-                                data={{
-                                  labels: question.options,
-                                  datasets: [{
-                                    label: 'Responses',
-                                    data: question.responses,
-                                    backgroundColor: [
-                                      CHART_COLORS.warning,
-                                      CHART_COLORS.error,
-                                    ],
-                                    borderRadius: 6,
-                                    barThickness: 30,
-                                  }]
-                                }} 
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-              
-              {/* Additional Questions */}
-              {sortedQuestions.length > 3 && (
+              {/* All Questions Summary */}
+              {sortedQuestions.length > 0 && (
                 <div className="mb-8">
                   <Card className={cn("border border-gray-200", theme.effects.shadow.sm)}>
-                    <CardHeader>
+                    <CardHeader className="p-4 sm:p-6">
                       <CardTitle className={cn(
-                        theme.typography.fontSize.xl,
+                        theme.typography.fontSize.lg,
+                        "sm:text-xl",
                         theme.typography.fontWeight.semibold,
                         theme.typography.fontFamily.display,
                         theme.colors.text.primary
@@ -506,45 +435,53 @@ export default async function DashboardPage(props: {
                         All Questions Summary
                       </CardTitle>
                       <p className={cn(
-                        theme.typography.fontSize.sm,
+                        theme.typography.fontSize.xs,
+                        "sm:text-sm",
                         theme.colors.text.secondary,
                         "mt-1 font-medium"
                       )}>
                         Response distribution for all survey questions
                       </p>
                     </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {sortedQuestions.slice(3).map((question, index) => (
-                          <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <CardContent className="p-3 sm:p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                        {sortedQuestions.map((question, index) => (
+                          <div key={index} className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-100">
                             <h3 className={cn(
                               theme.typography.fontWeight.medium,
                               theme.typography.fontFamily.display,
                               theme.colors.text.primary,
-                              "mb-2"
+                              "mb-2 text-sm sm:text-base break-words"
                             )}>
                               {question.question}
                             </h3>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-                                <span className={cn(
-                                  theme.typography.fontSize.sm
-                                )}>
-                                  {question.options[0]}: {question.responses[0]}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                                <span className={cn(
-                                  theme.typography.fontSize.sm
-                                )}>
-                                  {question.options[1]}: {question.responses[1]}
-                                </span>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-3 h-3 rounded-full bg-indigo-500 flex-shrink-0"></div>
+                                  <span className={cn(
+                                    theme.typography.fontSize.xs,
+                                    "sm:text-sm",
+                                    "break-words"
+                                  )}>
+                                    {question.options[0]}: {question.responses[0]}
+                                  </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></div>
+                                  <span className={cn(
+                                    theme.typography.fontSize.xs,
+                                    "sm:text-sm",
+                                    "break-words"
+                                  )}>
+                                    {question.options[1]}: {question.responses[1]}
+                                  </span>
+                                </div>
                               </div>
                               <div className={cn(
                                 theme.typography.fontSize.xs,
-                                theme.colors.text.secondary
+                                theme.colors.text.secondary,
+                                "flex-shrink-0"
                               )}>
                                 Total: {question.total}
                               </div>
