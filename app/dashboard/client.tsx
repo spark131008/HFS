@@ -13,7 +13,11 @@ import {
   Frown,
   Meh,
   Target,
-  Star
+  Star,
+  ArrowLeft,
+  Image as ImageIcon,
+  MessageSquare,
+  Clock
 } from 'lucide-react';
 import MainNavigationBar from '@/components/MainNavigationBar';
 import { theme, cn } from '@/theme';
@@ -177,7 +181,7 @@ const SmoothAreaChart = ({ data, showDates }: { data: DailyDataPoint[]; showDate
 };
 
 // 3. Feedback Card Component
-const FeedbackCard = ({ question, delay }: { question: QuestionData; delay: number }) => {
+const FeedbackCard = ({ question, delay, onClick }: { question: QuestionData; delay: number; onClick: () => void }) => {
   const total = question.positive + question.negative;
   const percentage = total > 0 ? Math.round((question.positive / total) * 100) : 0;
   const isHighPerforming = percentage >= 90;
@@ -185,7 +189,8 @@ const FeedbackCard = ({ question, delay }: { question: QuestionData; delay: numb
 
   return (
     <div 
-      className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-100 transition-all duration-300 flex flex-col justify-between h-full group"
+      onClick={onClick}
+      className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-100 transition-all duration-300 flex flex-col justify-between h-full group cursor-pointer"
       style={{ animation: `fadeInUp 0.5s ease-out ${delay}s backwards` }}
     >
       <div className="mb-4">
@@ -233,6 +238,424 @@ const FeedbackCard = ({ question, delay }: { question: QuestionData; delay: numb
   );
 };
 
+// 4. Trend Chart for Positive/Negative Over Time
+const TrendChart = ({ data }: { data: { date: string; positive: number; negative: number }[] }) => {
+  const height = 250;
+  const width = 800;
+  const padding = 40;
+  
+  const maxY = Math.max(...data.map(d => d.positive + d.negative), 1) * 1.2;
+  
+  const positivePoints = data.map((d, i) => {
+    const x = (i / Math.max(data.length - 1, 1)) * (width - 2 * padding) + padding;
+    const y = height - padding - (d.positive / maxY) * (height - 2 * padding);
+    return { x, y, value: d.positive, date: d.date };
+  });
+
+  const negativePoints = data.map((d, i) => {
+    const x = (i / Math.max(data.length - 1, 1)) * (width - 2 * padding) + padding;
+    const y = height - padding - ((d.positive + d.negative) / maxY) * (height - 2 * padding);
+    return { x, y, value: d.negative, date: d.date, baseY: height - padding - (d.positive / maxY) * (height - 2 * padding) };
+  });
+
+  // Generate paths
+  const positivePath = positivePoints.reduce((acc, point, i) => {
+    if (i === 0) return `M ${point.x},${point.y}`;
+    const prev = positivePoints[i - 1];
+    const cp1x = prev.x + (point.x - prev.x) / 2;
+    const cp1y = prev.y;
+    const cp2x = prev.x + (point.x - prev.x) / 2;
+    const cp2y = point.y;
+    return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${point.x},${point.y}`;
+  }, "");
+
+  // Create total points (positive + negative) for the top of negative area
+  const totalPoints = data.map((d, i) => {
+    const x = (i / Math.max(data.length - 1, 1)) * (width - 2 * padding) + padding;
+    const y = height - padding - ((d.positive + d.negative) / maxY) * (height - 2 * padding);
+    return { x, y };
+  });
+
+  // Generate total path (top line of negative area) - forward
+  const totalPathForward = totalPoints.reduce((acc, point, i) => {
+    if (i === 0) return `M ${point.x},${point.y}`;
+    const prev = totalPoints[i - 1];
+    const cp1x = prev.x + (point.x - prev.x) / 2;
+    const cp1y = prev.y;
+    const cp2x = prev.x + (point.x - prev.x) / 2;
+    const cp2y = point.y;
+    return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${point.x},${point.y}`;
+  }, "");
+
+  // Generate total path reversed (for closing the area)
+  const totalPathReversed = totalPoints.slice().reverse().reduce((acc, point, i, arr) => {
+    if (i === 0) return `L ${point.x},${point.y}`;
+    const prev = arr[i - 1];
+    const cp1x = prev.x + (point.x - prev.x) / 2;
+    const cp1y = prev.y;
+    const cp2x = prev.x + (point.x - prev.x) / 2;
+    const cp2y = point.y;
+    return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${point.x},${point.y}`;
+  }, "");
+
+  // Generate negative base path (bottom line of negative area - same as positive top line)
+  const negativeBasePath = negativePoints.reduce((acc, point, i) => {
+    if (i === 0) return `M ${point.x},${point.baseY}`;
+    const prev = negativePoints[i - 1];
+    const cp1x = prev.x + (point.x - prev.x) / 2;
+    const cp1y = prev.baseY;
+    const cp2x = prev.x + (point.x - prev.x) / 2;
+    const cp2y = point.baseY;
+    return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${point.x},${point.baseY}`;
+  }, "");
+
+  const positiveArea = `${positivePath} L ${width - padding},${height - padding} L ${padding},${height - padding} Z`;
+  // Negative area: base path (positive line) + line to last total point + total path reversed + close
+  const lastTotalPoint = totalPoints[totalPoints.length - 1];
+  const firstBasePoint = negativePoints[0];
+  const negativeArea = `${negativeBasePath} L ${lastTotalPoint.x},${lastTotalPoint.y} ${totalPathReversed} L ${firstBasePoint.x},${firstBasePoint.baseY} Z`;
+
+  return (
+    <div className="w-full h-80 overflow-hidden relative">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+        <defs>
+          <linearGradient id="positiveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="negativeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        
+        {/* Negative Area (stacked on top of positive) */}
+        <path d={negativeArea} fill="url(#negativeGradient)" />
+        <path d={totalPathForward} fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+        
+        {/* Positive Area (top) */}
+        <path d={positiveArea} fill="url(#positiveGradient)" />
+        <path d={positivePath} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
+        
+        {/* Data Points */}
+        {positivePoints.map((p, i) => (
+          <g key={`pos-${i}`} className="group/point">
+            <circle cx={p.x} cy={p.y} r="5" fill="#10b981" stroke="#fff" strokeWidth="2" className="opacity-0 group-hover/point:opacity-100 transition-opacity" />
+            <foreignObject x={p.x - 30} y={p.y - 50} width="60" height="40" className="opacity-0 group-hover/point:opacity-100 pointer-events-none">
+              <div className="bg-emerald-600 text-white text-xs rounded px-2 py-1 text-center font-bold shadow-lg">
+                +{p.value}
+              </div>
+            </foreignObject>
+          </g>
+        ))}
+        
+        {negativePoints.map((p, i) => (
+          <g key={`neg-${i}`} className="group/point">
+            <circle cx={p.x} cy={p.baseY} r="5" fill="#ef4444" stroke="#fff" strokeWidth="2" className="opacity-0 group-hover/point:opacity-100 transition-opacity" />
+            <foreignObject x={p.x - 30} y={p.baseY - 50} width="60" height="40" className="opacity-0 group-hover/point:opacity-100 pointer-events-none">
+              <div className="bg-rose-600 text-white text-xs rounded px-2 py-1 text-center font-bold shadow-lg">
+                -{p.value}
+              </div>
+            </foreignObject>
+          </g>
+        ))}
+      </svg>
+      
+      {/* Legend */}
+      <div className="absolute top-4 right-4 flex gap-4">
+        <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm">
+          <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+          <span className="text-xs font-semibold text-slate-700">Positive</span>
+        </div>
+        <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm">
+          <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+          <span className="text-xs font-semibold text-slate-700">Negative</span>
+        </div>
+      </div>
+      
+      {/* X-Axis Labels */}
+      <div className="absolute bottom-0 left-0 right-0 flex justify-between px-4 pb-2 text-xs text-slate-400 font-medium">
+        {data.map((d, i) => (
+          <span key={i}>
+            {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 5. Comment Card Component
+interface CommentData {
+  id: string;
+  text: string;
+  photoUrl: string;
+  timestamp: string;
+  sentiment: 'positive' | 'negative';
+}
+
+const DUMMY_COMMENTS: CommentData[] = [
+  {
+    id: '1',
+    text: 'Excellent service! The staff was very attentive and the atmosphere was perfect.',
+    photoUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&h=200&fit=crop',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    sentiment: 'positive'
+  },
+  {
+    id: '2',
+    text: 'Great experience overall. Would definitely come back again!',
+    photoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=200&fit=crop',
+    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    sentiment: 'positive'
+  },
+  {
+    id: '3',
+    text: 'The service was okay, but could be improved. Some areas need attention.',
+    photoUrl: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=200&h=200&fit=crop',
+    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    sentiment: 'negative'
+  },
+  {
+    id: '4',
+    text: 'Amazing! Everything exceeded my expectations. Highly recommend!',
+    photoUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop',
+    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    sentiment: 'positive'
+  },
+  {
+    id: '5',
+    text: 'Not satisfied with the experience. Several issues that need to be addressed.',
+    photoUrl: 'https://images.unsplash.com/photo-1552569973-610b96917a2f?w=200&h=200&fit=crop',
+    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    sentiment: 'negative'
+  }
+];
+
+const CommentCard = ({ comment }: { comment: CommentData }) => {
+  const timeAgo = (timestamp: string) => {
+    const now = new Date();
+    const commentTime = new Date(timestamp);
+    const diffInHours = Math.floor((now.getTime() - commentTime.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return commentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
+      <div className="flex gap-4">
+        <div className="flex-shrink-0">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 relative group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={comment.photoUrl} 
+              alt="Feedback photo" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Photo';
+              }}
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+              <ImageIcon size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-2">
+            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+              comment.sentiment === 'positive' 
+                ? 'bg-emerald-50 text-emerald-600' 
+                : 'bg-rose-50 text-rose-600'
+            }`}>
+              {comment.sentiment === 'positive' ? <Smile size={12} /> : <Frown size={12} />}
+              {comment.sentiment === 'positive' ? 'Positive' : 'Negative'}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-slate-400">
+              <Clock size={12} />
+              {timeAgo(comment.timestamp)}
+            </div>
+          </div>
+          <p className="text-slate-700 text-sm leading-relaxed">{comment.text}</p>
+          <div className="mt-2 text-xs text-slate-400">
+            {new Date(comment.timestamp).toLocaleString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 6. Drill-Down View Component
+const DrillDownView = ({ 
+  question, 
+  onBack, 
+  rawResponseData, 
+  dateRangeType, 
+  startDate, 
+  endDate 
+}: { 
+  question: QuestionData; 
+  onBack: () => void;
+  rawResponseData: RawResponse[];
+  dateRangeType: '7days' | 'custom';
+  startDate: string;
+  endDate: string;
+}) => {
+  const dummyComments = DUMMY_COMMENTS;
+
+  // Calculate trend data over time
+  const trendData = useMemo(() => {
+    const filteredResponses = dateRangeType === '7days' 
+      ? rawResponseData.filter(r => {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          return new Date(r.submitted_at) >= sevenDaysAgo;
+        })
+      : startDate && endDate
+      ? rawResponseData.filter(r => {
+          const responseDate = new Date(r.submitted_at).toISOString().split('T')[0];
+          return responseDate >= startDate && responseDate <= endDate;
+        })
+      : rawResponseData;
+
+    // Group by date
+    const dateMap = new Map<string, { positive: number; negative: number }>();
+    
+    filteredResponses.forEach(response => {
+      const responseDate = new Date(response.submitted_at).toISOString().split('T')[0];
+      const answer = response.question_answers[question.text];
+      
+      if (!dateMap.has(responseDate)) {
+        dateMap.set(responseDate, { positive: 0, negative: 0 });
+      }
+      
+      const data = dateMap.get(responseDate)!;
+      if (answer === 'right') {
+        data.positive++;
+      } else if (answer === 'left') {
+        data.negative++;
+      }
+    });
+
+    // Generate all dates in range
+    const dates: string[] = [];
+    if (dateRangeType === '7days') {
+      const now = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        dates.push(date.toISOString().split('T')[0]);
+      }
+    } else if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const current = new Date(start);
+      while (current <= end) {
+        dates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+    }
+
+    return dates.map(date => ({
+      date,
+      positive: dateMap.get(date)?.positive || 0,
+      negative: dateMap.get(date)?.negative || 0
+    }));
+  }, [question.text, rawResponseData, dateRangeType, startDate, endDate]);
+
+  const total = question.positive + question.negative;
+  const percentage = total > 0 ? Math.round((question.positive / total) * 100) : 0;
+
+  return (
+    <div className="min-h-screen bg-slate-50/50">
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
+        {/* Back Button */}
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-semibold mb-6 transition-colors group"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Dashboard
+        </button>
+
+        {/* Question Header */}
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 mb-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50 px-3 py-1 rounded-full">
+                  {question.category}
+                </span>
+                {percentage >= 90 && <Star size={18} className="text-amber-400 fill-amber-400" />}
+              </div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-4">{question.text}</h1>
+              <div className="flex items-center gap-6">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-slate-900">{percentage}%</span>
+                  <span className="text-lg text-slate-500 font-medium">satisfied</span>
+                </div>
+                <div className="h-8 w-px bg-slate-200"></div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Smile size={20} className="text-emerald-500" />
+                    <span className="text-xl font-bold text-emerald-600">{question.positive}</span>
+                    <span className="text-sm text-slate-500">positive</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Frown size={20} className="text-rose-500" />
+                    <span className="text-xl font-bold text-rose-600">{question.negative}</span>
+                    <span className="text-sm text-slate-500">negative</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Trend Chart */}
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 mb-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Trends Over Time</h2>
+            <p className="text-slate-400 text-sm">Positive and negative feedback distribution</p>
+          </div>
+          <TrendChart data={trendData} />
+        </div>
+
+        {/* Top Comments Section */}
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <MessageSquare size={24} />
+                Top 5 Comments
+              </h2>
+              <p className="text-slate-400 text-sm">Recent feedback with photos</p>
+            </div>
+            <div className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full font-semibold">
+              Preview Mode
+            </div>
+          </div>
+          <div className="space-y-4">
+            {dummyComments.map((comment) => (
+              <CommentCard key={comment.id} comment={comment} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function DashboardClient({
   surveyTitle,
   dailyData: initialDailyData,
@@ -249,6 +672,7 @@ export default function DashboardClient({
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [chartShowDates, setChartShowDates] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<QuestionData | null>(null);
 
 
   // Close dropdowns when clicking outside
@@ -523,6 +947,29 @@ export default function DashboardClient({
     }
   };
 
+  // If a question is selected, show drill-down view
+  if (selectedQuestion) {
+    return (
+      <>
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+        <MainNavigationBar />
+        <DrillDownView
+          question={selectedQuestion}
+          onBack={() => setSelectedQuestion(null)}
+          rawResponseData={rawResponseData}
+          dateRangeType={dateRangeType}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 selection:bg-indigo-100">
       {/* Global Styles for Animations */}
@@ -765,7 +1212,12 @@ export default function DashboardClient({
             {/* Feedback Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {filteredData.map((q, index) => (
-                <FeedbackCard key={q.id} question={q} delay={0.5 + (index * 0.1)} />
+                <FeedbackCard 
+                  key={q.id} 
+                  question={q} 
+                  delay={0.5 + (index * 0.1)}
+                  onClick={() => setSelectedQuestion(q)}
+                />
               ))}
             </div>
 
