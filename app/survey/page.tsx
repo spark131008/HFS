@@ -81,8 +81,9 @@ function SurveyContent() {
     setClickedEmoji(null);
   }, [questionIndex]);
   
-  // Fortune cookie wisdom to show at the end
-  const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
+  // Remove the hardcoded wisdom
+  const [fortuneWisdom, setFortuneWisdom] = useState<string | null>(null);
+  const [isWisdomLoading, setIsWisdomLoading] = useState(false);
 
   // Fetch survey data on component mount
   useEffect(() => {
@@ -175,6 +176,30 @@ function SurveyContent() {
 
     fetchSurveyData();
   }, [restaurantCode]);
+
+  // Fetch a random wisdom when finished becomes true
+  useEffect(() => {
+    if (finished) {
+      const fetchWisdom = async () => {
+        setIsWisdomLoading(true);
+        try {
+          const supabase = createClient();
+          // Use the RPC function to get a random wisdom
+          const { data, error } = await supabase.rpc('get_random_wisdom');
+          if (error || !data || data.length === 0) {
+            setFortuneWisdom('Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.');
+          } else {
+            setFortuneWisdom(data[0].text);
+          }
+        } catch {
+          setFortuneWisdom('Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.');
+        } finally {
+          setIsWisdomLoading(false);
+        }
+      };
+      fetchWisdom();
+    }
+  }, [finished]);
 
   // Get the current image based on the question index
   const getCurrentImage = () => {
@@ -860,7 +885,7 @@ function SurveyContent() {
                   textAlign: 'center',
                   margin: 0
                 }}>
-                  &quot;{fortuneWisdom}&quot;
+                  {isWisdomLoading ? 'Loading your fortune...' : `"${fortuneWisdom ?? ''}"`}
                 </p>
                 
                 <div style={{
