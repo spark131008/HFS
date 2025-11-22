@@ -161,15 +161,12 @@ function SurveyContent() {
         }
 
         // Load questions based on survey type
-        let sortedQuestions: string[];
-        let questionMeta: Array<{ id: string | null; question_text: string }>;
-        
         // Both operational and custom surveys have questions in survey_questions table
         const sortedSurveyQuestions = surveys.survey_questions
           .sort((a, b) => (a.position || 0) - (b.position || 0));
-        sortedQuestions = sortedSurveyQuestions.map(q => q.question_text);
+        const sortedQuestions = sortedSurveyQuestions.map(q => q.question_text);
         // Use the actual question UUIDs from the database for both types
-        questionMeta = sortedSurveyQuestions.map(q => ({ id: q.id, question_text: q.question_text }));
+        const questionMeta = sortedSurveyQuestions.map(q => ({ id: q.id, question_text: q.question_text }));
 
         console.log('Fetched survey data:', {
           title: surveys.title,
@@ -429,6 +426,7 @@ function SurveyContent() {
       return;
     }
 
+    setIsSavingContact(true);
     console.log('Showing lottery screen for:', contactType);
     // Show lottery animation for both phone and email
     setShowLottery(true);
@@ -467,6 +465,8 @@ function SurveyContent() {
           }
         } catch (err) {
           console.error('Error saving contact details:', err);
+        } finally {
+          setIsSavingContact(false);
         }
         
         // Keep showing finished screen after lottery (just hide lottery)
