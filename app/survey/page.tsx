@@ -5,21 +5,154 @@ import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { useSearchParams } from 'next/navigation';
 import { OPERATIONAL_QUESTIONS } from '@/utils/operational-questions';
+import { Phone, Mail, Trophy, XCircle, Wine, PartyPopper, Camera, X, Image as ImageIcon } from 'lucide-react';
+
+// --- CANVAS COMPONENT FOR AMBIENT BACKGROUND ---
+const ParticleCanvas = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    
+    // Set actual canvas size to handle retina displays for sharper rendering
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    const particles: any[] = [];
+    const particleCount = 60; 
+
+    class Particle {
+      x: number;
+      y: number;
+      size: number;
+      speedX: number;
+      speedY: number;
+      opacity: number;
+      hue: number;
+
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = Math.random() * 0.4 - 0.2;
+        this.speedY = Math.random() * 0.4 - 0.2;
+        this.opacity = Math.random() * 0.5 + 0.1;
+        this.hue = Math.random() * 40 + 30; // Warm gold/amber hues
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        
+        // Pulse effect
+        this.opacity += (Math.random() * 0.02 - 0.01);
+        if (this.opacity < 0.1) this.opacity = 0.1;
+        if (this.opacity > 0.6) this.opacity = 0.6;
+
+        // Wrap around screen
+        if (this.x > width) this.x = 0;
+        if (this.x < 0) this.x = width;
+        if (this.y > height) this.y = 0;
+        if (this.y < 0) this.y = height;
+      }
+
+      draw() {
+        if (!ctx) return;
+        ctx.fillStyle = `hsla(${this.hue}, 100%, 70%, ${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const init = () => {
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+    };
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+      
+      // subtle gradient background drawn on canvas to blend perfectly
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#050505'); 
+      gradient.addColorStop(1, '#1a1a1a');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    };
+
+    init();
+    animate();
+
+    const handleResize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: -1,
+        pointerEvents: 'none'
+      }} 
+    />
+  );
+};
+
+// --- LOADING COMPONENT ---
+function LoadingScreen() {
+    return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-black text-white font-sans">
+            <div className="spinner mb-6"></div>
+            <p className="opacity-70 tracking-[0.2em] uppercase text-xs animate-pulse">Loading Experience</p>
+            <style>{`
+                .spinner {
+                    width: 40px;
+                    height: 40px;
+                    border: 2px solid rgba(255,255,255,0.1);
+                    border-radius: 50%;
+                    border-top-color: #D4AF37;
+                    animation: spin 1s ease-in-out infinite;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+            `}</style>
+        </div>
+    );
+}
 
 export default function Home() {
   return (
-    <Suspense fallback={
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000000',
-        color: '#ffffff'
-      }}>
-        Loading...
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen />}>
       <SurveyContent />
     </Suspense>
   );
@@ -75,26 +208,30 @@ function SurveyContent() {
   // For emoji click animation
   const [clickedEmoji, setClickedEmoji] = useState<'left' | 'right' | null>(null);
 
-  // For responsive design
-  const [windowWidth, setWindowWidth] = useState(0);
-
-  // Set up window width measurement
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    // Initialize on mount
-    handleResize();
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Details input state
+  const [currentQuestionAnswered, setCurrentQuestionAnswered] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<'photo' | 'text'>('photo');
+  const [questionDetails, setQuestionDetails] = useState<Array<{ photo: File | null; photoPreview: string | null; text: string }>>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [activeSurveyId, setActiveSurveyId] = useState<number | null>(null);
+  const [pendingAnswerDirection, setPendingAnswerDirection] = useState<string | null>(null);
+  const [savedAnswerIds, setSavedAnswerIds] = useState<Array<{ questionIndex: number; answerId: number }>>([]);
 
   // Reset clicked emoji state when question changes
   useEffect(() => {
     setClickedEmoji(null);
+    setCurrentQuestionAnswered(false);
+    setPendingAnswerDirection(null);
   }, [questionIndex]);
+
+  // Initialize question details array when questions are loaded
+  useEffect(() => {
+    if (questions.length > 0 && questionDetails.length === 0) {
+      setQuestionDetails(Array(questions.length).fill(null).map(() => ({ photo: null, photoPreview: null, text: '' })));
+    }
+  }, [questions.length]);
   
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
@@ -123,6 +260,9 @@ function SurveyContent() {
           setIsLoading(false);
           return;
         }
+
+        // Store restaurant ID for photo uploads
+        setRestaurantId(restaurant.id);
 
         // Then fetch the active survey for this restaurant
         const { data: surveys, error: surveyError } = await supabase
@@ -182,6 +322,7 @@ function SurveyContent() {
         setSurveyLocation(surveys.location);
         setQuestions(sortedQuestions);
         setQuestionMetadata(questionMeta);
+        setActiveSurveyId(surveys.id);
         
         setIsLoading(false);
       } catch (err) {
@@ -230,6 +371,63 @@ function SurveyContent() {
     setShowQuestions(true);
   };
 
+  // Upload photo to Supabase Storage
+  const uploadPhotoToStorage = async (file: File, responseId: number, questionIndex: number): Promise<string | null> => {
+    if (!restaurantId || !activeSurveyId) {
+      console.error('Missing restaurant ID or survey ID for photo upload');
+      return null;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        setUploadError('File size must be less than 5MB');
+        return null;
+      }
+
+      // Validate file type (images only)
+      const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validImageTypes.includes(file.type)) {
+        setUploadError('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+        return null;
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const fileName = `${responseId}_${questionIndex}_${timestamp}.${fileExt}`;
+      const filePath = `${restaurantId}/${activeSurveyId}/${fileName}`;
+
+      // Upload to storage bucket 'survey-media'
+      const { data, error } = await supabase.storage
+        .from('survey-media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading photo:', error);
+        setUploadError('Failed to upload photo. Please try again.');
+        return null;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('survey-media')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Unexpected error uploading photo:', err);
+      setUploadError('An unexpected error occurred. Please try again.');
+      return null;
+    }
+  };
+
   // Handle emoji click with animation
   const handleEmojiClick = (direction: 'left' | 'right') => {
     // Don't process if already processing
@@ -242,20 +440,78 @@ function SurveyContent() {
     handleAnswer(direction);
   };
 
-  // Handle answer submission
-  const handleAnswer = useCallback(async (direction: string) => {
-    if (isProcessingAnswer) {
-      console.log('Already processing an answer, ignoring this one');
-      return;
+  // Save details to survey_response_details table
+  const saveQuestionDetails = async (answerId: number, questionIdx: number, responseId: number) => {
+    const details = questionDetails[questionIdx];
+    if (!details || (!details.photo && !details.text?.trim())) {
+      return; // No details to save
     }
-    
-    setIsProcessingAnswer(true);
-    
+
     try {
-      // Save the answer to the database
+      const supabase = createClient();
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      // Upload photo if exists
+      if (details.photo) {
+        setIsUploadingMedia(true);
+        setUploadError(null);
+        
+        mediaUrl = await uploadPhotoToStorage(details.photo, responseId, questionIdx);
+        if (mediaUrl) {
+          mediaType = 'image';
+        }
+        setIsUploadingMedia(false);
+      }
+
+      // Prepare details record
+      const detailsRecord: {
+        response_answer_id: number;
+        additional_text?: string;
+        media_url?: string;
+        media_type?: string;
+      } = {
+        response_answer_id: answerId
+      };
+
+      if (details.text?.trim()) {
+        detailsRecord.additional_text = details.text.trim();
+      }
+
+      if (mediaUrl) {
+        detailsRecord.media_url = mediaUrl;
+        detailsRecord.media_type = mediaType || 'image';
+      }
+
+      // Only insert if we have something to save
+      if (detailsRecord.additional_text || detailsRecord.media_url) {
+        const { error: detailsError } = await supabase
+          .from('survey_response_details')
+          .insert([detailsRecord]);
+
+        if (detailsError) {
+          console.error('Error saving question details:', detailsError);
+        } else {
+          console.log('Successfully saved question details for answer', answerId);
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error saving question details:', err);
+      setIsUploadingMedia(false);
+    }
+  };
+
+  // Handle continue from details input - save answer and details, then move to next question
+  const handleContinueFromDetails = useCallback(async () => {
+    if (!pendingAnswerDirection) return;
+
+    setIsProcessingAnswer(true);
+    setUploadError(null);
+
+    try {
       const supabase = createClient();
 
-      // First get the restaurant ID and active survey ID from the code
+      // Get restaurant and survey info
       const { data: restaurant } = await supabase
         .from('restaurants')
         .select('id')
@@ -264,10 +520,10 @@ function SurveyContent() {
 
       if (!restaurant) {
         console.error('Restaurant not found');
+        setIsProcessingAnswer(false);
         return;
       }
 
-      // Get the active survey ID
       const { data: activeSurvey } = await supabase
         .from('survey')
         .select('id')
@@ -279,24 +535,15 @@ function SurveyContent() {
 
       if (!activeSurvey) {
         console.error('Active survey not found');
+        setIsProcessingAnswer(false);
         return;
       }
 
-      // Update local state with the new answer
-      const updatedAnswers = [...answers, direction];
-      setAnswers(updatedAnswers);
-
-      // Save all answers at once when survey is complete
-      if (questionIndex === questions.length - 1) {
-        console.log('Saving final answers:', {
-          questions,
-          answers: updatedAnswers,
-          questionAnswers: updatedAnswers.reduce<Record<string, string>>((acc, ans, idx) => {
-            acc[questions[idx]] = ans;
-            return acc;
-          }, {})
-        });
-
+      // Create or get response_id
+      let currentResponseId = responseId;
+      if (!currentResponseId) {
+        // Create new response record
+        const updatedAnswers = [...answers, pendingAnswerDirection];
         const { data: insertedData, error: responseError } = await supabase
           .from('survey_responses')
           .insert([{
@@ -312,112 +559,93 @@ function SurveyContent() {
           .single();
 
         if (responseError) {
-          console.error('Error saving responses:', responseError);
-        } else if (insertedData) {
-          // Store the response ID so we can update it later with contact details
-          setResponseId(insertedData.id);
-          
-          // Also save each answer individually to survey_response_answers table
-          try {
-            // Validate that we have question metadata
-            if (!questionMetadata || questionMetadata.length === 0) {
-              console.error('Question metadata is empty, cannot save individual answers. Metadata:', questionMetadata);
-              // Continue with the rest of the function even if we can't save individual answers
-            } else {
-
-            if (questionMetadata.length !== updatedAnswers.length) {
-              console.warn('Question metadata length mismatch:', {
-                metadataLength: questionMetadata.length,
-                answersLength: updatedAnswers.length,
-                questionMetadata,
-                updatedAnswers
-              });
-            }
-
-            // Build answer records for insertion
-            // Table structure: response_id (bigint), survey_question_id (uuid, NOT NULL), answer_value (text)
-            // created_at is auto-generated, so we don't include it
-            const answerRecords = updatedAnswers.map((answer, idx) => {
-              const questionMeta = questionMetadata[idx];
-              
-              // Validate that we have a question ID (required field)
-              if (!questionMeta?.id) {
-                console.error(`Missing question ID for answer ${idx}:`, {
-                  questionMeta,
-                  questionText: questions[idx]
-                });
-                throw new Error(`Missing question ID for answer at index ${idx}`);
-              }
-              
-              const record: {
-                response_id: number;
-                survey_question_id: string;
-                answer_value: string;
-              } = {
-                response_id: insertedData.id,
-                survey_question_id: questionMeta.id,
-                answer_value: answer
-              };
-              console.log(`Answer record ${idx}:`, record);
-              return record;
-            });
-
-            console.log('Attempting to insert answer records:', {
-              count: answerRecords.length,
-              records: answerRecords,
-              responseId: insertedData.id
-            });
-
-            const { data: insertedAnswers, error: answersError } = await supabase
-              .from('survey_response_answers')
-              .insert(answerRecords)
-              .select();
-
-            if (answersError) {
-              console.error('Error saving individual answers to survey_response_answers:', {
-                error: answersError,
-                message: answersError.message,
-                details: answersError.details,
-                hint: answersError.hint,
-                code: answersError.code,
-                recordsAttempted: answerRecords
-              });
-              // Note: We don't fail the whole operation if this fails, as the main response is already saved
-            } else {
-              console.log('Successfully saved individual answers to survey_response_answers:', {
-                count: insertedAnswers?.length || 0,
-                insertedAnswers
-              });
-            }
-            } // End of else block for questionMetadata check
-          } catch (err) {
-            console.error('Unexpected error while saving individual answers:', {
-              error: err,
-              message: err instanceof Error ? err.message : 'Unknown error',
-              stack: err instanceof Error ? err.stack : undefined
-            });
-            // Don't throw - main response is already saved
-          }
+          console.error('Error creating response:', responseError);
+          setIsProcessingAnswer(false);
+          return;
         }
+
+        currentResponseId = insertedData.id;
+        setResponseId(currentResponseId);
       }
-      
-      // Move to next question or finish
+
+      // Save the current answer to survey_response_answers
+      const questionMeta = questionMetadata[questionIndex];
+      if (!questionMeta?.id) {
+        console.error('Missing question ID for answer');
+        setIsProcessingAnswer(false);
+        return;
+      }
+
+      const { data: insertedAnswer, error: answerError } = await supabase
+        .from('survey_response_answers')
+        .insert([{
+          response_id: currentResponseId,
+          survey_question_id: questionMeta.id,
+          answer_value: pendingAnswerDirection
+        }])
+        .select('id')
+        .single();
+
+      if (answerError) {
+        console.error('Error saving answer:', answerError);
+        setIsProcessingAnswer(false);
+        return;
+      }
+
+      // Update local answers state
+      const updatedAnswers = [...answers, pendingAnswerDirection];
+      setAnswers(updatedAnswers);
+
+      // Update question_answers JSONB field in survey_responses if this is the last question
+      if (questionIndex === questions.length - 1) {
+        const questionAnswers = updatedAnswers.reduce<Record<string, string>>((acc, ans, idx) => {
+          acc[questions[idx]] = ans;
+          return acc;
+        }, {});
+
+        const supabase = createClient();
+        await supabase
+          .from('survey_responses')
+          .update({ question_answers: questionAnswers })
+          .eq('id', currentResponseId);
+      }
+
+      // Save details if provided
+      if (insertedAnswer && currentResponseId) {
+        await saveQuestionDetails(insertedAnswer.id, questionIndex, currentResponseId);
+      }
+
+      // Clear details input and move to next question
+      setCurrentQuestionAnswered(false);
+      setPendingAnswerDirection(null);
+
+      // Move to next question or show contact question
       if (questionIndex < questions.length - 1) {
         setQuestionIndex(prevIndex => prevIndex + 1);
       } else {
-        // Show finished screen with fortune cookie
+        // End of questions - show contact question
         setShowQuestions(false);
-        setFinished(true);
+        setShowContactQuestion(true);
       }
     } catch (err) {
-      console.error('Error processing answer:', err);
+      console.error('Error processing continue from details:', err);
     } finally {
-      // Reset processing state after a delay
-      setTimeout(() => {
-        setIsProcessingAnswer(false);
-      }, 300);
+      setIsProcessingAnswer(false);
     }
-  }, [questionIndex, questions, answers, restaurantCode, isProcessingAnswer, questionMetadata]);
+  }, [pendingAnswerDirection, responseId, restaurantCode, questionIndex, questionMetadata, answers, questions, questionDetails]);
+
+  // Handle answer submission - show details input on same page
+  const handleAnswer = useCallback((direction: string) => {
+    if (isProcessingAnswer) {
+      console.log('Already processing an answer, ignoring this one');
+      return;
+    }
+    
+    // Store the answer direction and mark question as answered
+    // Allow changing answer if user swipes again
+    setPendingAnswerDirection(direction);
+    setCurrentQuestionAnswered(true);
+  }, [isProcessingAnswer]);
   
   // Handle contact details submission
   const handleContactSubmit = useCallback(async () => {
@@ -427,54 +655,54 @@ function SurveyContent() {
     }
 
     setIsSavingContact(true);
-    console.log('Showing lottery screen for:', contactType);
-    // Show lottery animation for both phone and email
+    
+    // Hide contact question and show lottery
+    setShowContactQuestion(false);
     setShowLottery(true);
     setIsRolling(true);
     
     // Determine win/loss (1 in 10 chance)
     const hasWon = Math.random() < 0.1; // 10% chance
     
-    // Roll animation for 2.5 seconds
-    setTimeout(() => {
+    // Roll animation for 2 seconds
+    setTimeout(async () => {
       setIsRolling(false);
       setLotteryResult(hasWon ? 'win' : 'lose');
       
       // Save contact details after showing result
-      setTimeout(async () => {
-        try {
-          const supabase = createClient();
-          const contactDetails: { phone_number?: string; email?: string } = {};
-          
-          if (contactType === 'phone') {
-            contactDetails.phone_number = contactValue.trim();
-          } else if (contactType === 'email') {
-            contactDetails.email = contactValue.trim();
-          }
-          
-          const { error: updateError } = await supabase
-            .from('survey_responses')
-            .update({ 
-              contact_details: contactDetails,
-              lottery: hasWon
-            })
-            .eq('id', responseId);
-
-          if (updateError) {
-            console.error('Error updating contact details:', updateError);
-          }
-        } catch (err) {
-          console.error('Error saving contact details:', err);
-        } finally {
-          setIsSavingContact(false);
+      try {
+        const supabase = createClient();
+        const contactDetails: { phone_number?: string; email?: string } = {};
+        
+        if (contactType === 'phone') {
+          contactDetails.phone_number = contactValue.trim();
+        } else if (contactType === 'email') {
+          contactDetails.email = contactValue.trim();
         }
         
-        // Keep showing finished screen after lottery (just hide lottery)
-        setTimeout(() => {
-          setShowLottery(false);
-        }, 2000);
-      }, 2000);
-    }, 2500);
+        const { error: updateError } = await supabase
+          .from('survey_responses')
+          .update({ 
+            contact_details: contactDetails,
+            lottery: hasWon
+          })
+          .eq('id', responseId);
+
+        if (updateError) {
+          console.error('Error updating contact details:', updateError);
+        }
+      } catch (err) {
+        console.error('Error saving contact details:', err);
+      } finally {
+        setIsSavingContact(false);
+      }
+      
+      // After result, go to final screen
+      setTimeout(() => {
+        setShowLottery(false);
+        setFinished(true);
+      }, 3500);
+    }, 2000);
   }, [responseId, contactType, contactValue]);
 
   // Handle skip contact details
@@ -482,9 +710,102 @@ function SurveyContent() {
     setShowContactQuestion(false);
     setFinished(true);
   };
+
+  // Handle photo file selection
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setUploadError('File size must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validImageTypes.includes(file.type)) {
+      setUploadError('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+      return;
+    }
+
+    setUploadError(null);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setQuestionDetails(prev => {
+        const newDetails = [...prev];
+        newDetails[questionIndex] = {
+          ...newDetails[questionIndex],
+          photo: file,
+          photoPreview: reader.result as string
+        };
+        return newDetails;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle remove photo
+  const handleRemovePhoto = () => {
+    setQuestionDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[questionIndex] = {
+        ...newDetails[questionIndex],
+        photo: null,
+        photoPreview: null
+      };
+      return newDetails;
+    });
+    setUploadError(null);
+  };
+
+  // Handle text change
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setQuestionDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[questionIndex] = {
+        ...newDetails[questionIndex],
+        text: e.target.value
+      };
+      return newDetails;
+    });
+  };
+
+  // Handle skip details
+  const handleSkipDetails = async () => {
+    if (!pendingAnswerDirection) return;
+    
+    // Clear details for current question
+    setQuestionDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[questionIndex] = { photo: null, photoPreview: null, text: '' };
+      return newDetails;
+    });
+    
+    // Continue without saving details
+    await handleContinueFromDetails();
+  };
   
   // Swipe detection handlers with velocity and smooth animations
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Don't trigger swipe if touching interactive elements
+    const target = e.target as HTMLElement;
+    const isInteractiveElement = 
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'BUTTON' ||
+      target.closest('textarea') ||
+      target.closest('input') ||
+      target.closest('button') ||
+      target.closest('label');
+    
+    if (isInteractiveElement) {
+      return;
+    }
+
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchStartTime.current = Date.now();
@@ -568,1074 +889,397 @@ function SurveyContent() {
     };
   };
 
-  // Get swipe direction indicator styles with improved visuals
-  const getSwipeIndicatorStyles = () => {
-    const intensity = Math.min(Math.abs(swipeOffset) / 150, 1);
 
-    if (!swipeDirection || intensity < 0.2) return { opacity: 0 };
-
-    // Use red for not satisfied (left), green for satisfied (right)
-    const leftColor = surveyType === 'operational'
-      ? 'rgba(239, 68, 68, INTENSITY)' // Red for not satisfied
-      : 'rgba(255, 75, 75, INTENSITY)'; // Original red for custom
-    const rightColor = surveyType === 'operational'
-      ? 'rgba(34, 197, 94, INTENSITY)' // Green for satisfied
-      : 'rgba(75, 255, 75, INTENSITY)'; // Original green for custom
-
-    return {
-      background: swipeDirection === 'left'
-        ? `linear-gradient(to left, transparent 0%, ${leftColor.replace('INTENSITY', String(intensity * 0.5))} 100%)`
-        : `linear-gradient(to right, transparent 0%, ${rightColor.replace('INTENSITY', String(intensity * 0.5))} 100%)`,
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 1,
-      pointerEvents: 'none',
-      transition: isSwiping ? 'none' : 'opacity 0.3s ease',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: swipeDirection === 'left' ? 'flex-start' : 'flex-end',
-      padding: '20px'
-    };
-  };
-
-  if (isLoading) {
-    return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000000',
-        color: '#ffffff'
-      }}>
-        Loading survey...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000000',
-        color: '#ffffff',
-        padding: '20px',
-        textAlign: 'center'
-      }}>
-        <h2 style={{ marginBottom: '20px' }}>Error</h2>
-        <p>{error}</p>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
+  if (error) return <div className="h-screen flex items-center justify-center text-red-500">{error}</div>;
 
   return (
-    <div 
-      style={{
-        background: '#000000',
-        height: '100vh', // Fixed height to viewport height
-        maxHeight: '100vh', // Ensure it doesn't exceed viewport
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: windowWidth < 768 ? 'flex-start' : 'center',
-        color: '#ffffff',
-        textAlign: 'center',
-        padding: windowWidth < 768 ? '10px 20px 60px' : '20px',
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-        boxSizing: 'border-box',
-        paddingTop: windowWidth < 768 ? '40px' : '20px',
-        overflow: 'hidden', // Prevent scrolling
-        position: 'fixed', // Fix position to viewport
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0
-      }}
-    >
-      {/* Main container */}
-      <div
-        style={{
-          position: 'relative',
-          maxWidth: '650px',
-          width: '100%',
-          borderRadius: '0',
-          overflow: 'hidden',
-          background: '#000000',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-          padding: finished ? '40px' : windowWidth < 768 ? '30px 20px' : '60px 40px',
-          touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          ...(showQuestions && !finished ? getCardTransform() : {})
-        }}
-        onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
-        onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
-        onTouchEnd={showQuestions && !finished ? handleTouchEnd : undefined}
-      >
-        {/* Swipe direction indicator overlay with visual feedback and emoji */}
-        {swipeDirection && (
-          <div style={getSwipeIndicatorStyles() as React.CSSProperties}>
-            <div style={{
-              fontSize: '64px',
-              fontWeight: 'bold',
-              textShadow: '0 4px 20px rgba(0, 0, 0, 0.8)',
-              transform: 'scale(1.1)',
-              animation: 'pulse 0.5s ease infinite',
-              zIndex: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <div>{swipeDirection === 'left' ? '😞' : '😊'}</div>
-              <div style={{
-                fontSize: '20px',
-                fontWeight: 600,
-                color: '#ffffff',
-                textTransform: 'uppercase',
-                letterSpacing: '2px'
-              }}>
-                {surveyType === 'operational'
-                  ? (swipeDirection === 'left' ? 'Not Satisfied' : 'Satisfied')
-                  : (swipeDirection === 'left' ? 'Left' : 'Right')
-                }
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Initial screen */}
-        {!showQuestions && !finished && !showContactQuestion && !showLottery && (
-          <div style={{ 
-            animation: 'fadeIn 0.8s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '40px'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{ 
-              position: 'relative', 
-              width: '100%', 
-              height: windowWidth < 768 ? '250px' : '350px',
-              overflow: 'hidden',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src={getCurrentImage()}
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div style={{
-              maxWidth: '450px',
-              margin: '0 auto'
-            }}>
-              <h2 style={{ 
-                fontSize: windowWidth < 768 ? '28px' : '32px',
-                fontWeight: 700,
-                marginBottom: windowWidth < 768 ? '16px' : '24px',
-                color: '#fff',
-                lineHeight: 1.2,
-                fontFamily: 'Georgia, serif'
-              }}>
-                {surveyTitle}
-              </h2>
-              
-              {surveyLocation && (
-                <p style={{
-                  fontSize: windowWidth < 768 ? '16px' : '18px',
-                  color: '#cccccc',
-                  marginBottom: '16px'
-                }}>
-                  {surveyLocation}
-                </p>
-              )}
-              
-              <p style={{
-                fontSize: windowWidth < 768 ? '14px' : '16px',
-                lineHeight: 1.6,
-                color: '#cccccc',
-                marginBottom: windowWidth < 768 ? '20px' : '30px'
-              }}>
-                Take a moment to share your thoughts with us.
-              </p>
-              
-              <button 
-                onClick={handleStart}
-                style={{
-                  padding: '16px 32px',
-                  fontSize: '16px',
-                  cursor: 'pointer',
-                  backgroundColor: '#ffffff',
-                  border: 'none',
-                  borderRadius: '50px',
-                  color: '#000000',
-                  fontWeight: 600,
-                  letterSpacing: '1px',
-                  transition: 'all 0.3s ease',
-                  outline: 'none',
-                  textTransform: 'uppercase'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.backgroundColor = '#e6e6e6';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.backgroundColor = '#ffffff';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                START
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Contact details question screen */}
-        {showContactQuestion && !finished && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '30px',
-            animation: 'fadeIn 0.4s ease'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{
-              position: 'relative',
-              width: '100%',
-              height: windowWidth < 768 ? '250px' : '350px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src="/survey/4.png"
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div>
-              <h2 style={{ 
-                fontSize: '24px',
-                fontWeight: 600,
-                marginBottom: '16px',
-                color: '#fff',
-                fontFamily: 'Georgia, serif',
-                lineHeight: 1.4
-              }}>
-                Want a chance to win a free drink?
-              </h2>
-              
-              <p style={{
-                fontSize: '16px',
-                color: '#cccccc',
-                marginBottom: '30px',
-                lineHeight: 1.6
-              }}>
-                Enter your phone number or email to enter the draw
-              </p>
-
-              {/* Contact type selection */}
-              <div style={{
-                display: 'flex',
-                gap: '15px',
-                marginBottom: '20px',
-                justifyContent: 'center'
-              }}>
-                <button
-                  onClick={() => {
-                    setContactType('phone');
-                    setContactValue('');
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    backgroundColor: contactType === 'phone' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)',
-                    border: '2px solid #ffffff',
-                    borderRadius: '25px',
-                    color: contactType === 'phone' ? '#000000' : '#ffffff',
-                    fontWeight: 600,
-                    transition: 'all 0.3s ease',
-                    outline: 'none'
-                  }}
-                >
-                  Phone
-                </button>
-                <button
-                  onClick={() => {
-                    setContactType('email');
-                    setContactValue('');
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    backgroundColor: contactType === 'email' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)',
-                    border: '2px solid #ffffff',
-                    borderRadius: '25px',
-                    color: contactType === 'email' ? '#000000' : '#ffffff',
-                    fontWeight: 600,
-                    transition: 'all 0.3s ease',
-                    outline: 'none'
-                  }}
-                >
-                  Email
-                </button>
-              </div>
-
-              {/* Contact input */}
-              {contactType && (
-                <div style={{ marginBottom: '20px' }}>
-                  <input
-                    type={contactType === 'phone' ? 'tel' : 'email'}
-                    value={contactValue}
-                    onChange={(e) => setContactValue(e.target.value)}
-                    placeholder={contactType === 'phone' ? 'Enter your phone number' : 'Enter your email'}
-                    style={{
-                      width: '100%',
-                      padding: '16px',
-                      fontSize: '16px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      border: '2px solid rgba(255, 255, 255, 0.3)',
-                      borderRadius: '8px',
-                      color: '#ffffff',
-                      outline: 'none',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#ffffff';
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Submit and Skip buttons */}
-              <div style={{
-                display: 'flex',
-                gap: '15px',
-                justifyContent: 'center',
-                flexDirection: windowWidth < 768 ? 'column' : 'row'
-              }}>
-                <button
-                  onClick={handleContactSubmit}
-                  disabled={!contactType || !contactValue.trim() || isSavingContact}
-                  style={{
-                    padding: '16px 32px',
-                    fontSize: '16px',
-                    cursor: (!contactType || !contactValue.trim() || isSavingContact) ? 'not-allowed' : 'pointer',
-                    backgroundColor: (!contactType || !contactValue.trim() || isSavingContact) ? 'rgba(255, 255, 255, 0.3)' : '#ffffff',
-                    border: 'none',
-                    borderRadius: '50px',
-                    color: '#000000',
-                    fontWeight: 600,
-                    letterSpacing: '1px',
-                    transition: 'all 0.3s ease',
-                    outline: 'none',
-                    textTransform: 'uppercase',
-                    opacity: (!contactType || !contactValue.trim() || isSavingContact) ? 0.5 : 1
-                  }}
-                >
-                  {isSavingContact ? 'Submitting...' : 'Submit'}
-                </button>
-                <button
-                  onClick={handleSkipContact}
-                  disabled={isSavingContact}
-                  style={{
-                    padding: '16px 32px',
-                    fontSize: '16px',
-                    cursor: isSavingContact ? 'not-allowed' : 'pointer',
-                    backgroundColor: 'transparent',
-                    border: '2px solid rgba(255, 255, 255, 0.5)',
-                    borderRadius: '50px',
-                    color: '#ffffff',
-                    fontWeight: 600,
-                    letterSpacing: '1px',
-                    transition: 'all 0.3s ease',
-                    outline: 'none',
-                    textTransform: 'uppercase',
-                    opacity: isSavingContact ? 0.5 : 1
-                  }}
-                >
-                  Skip
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Lottery animation screen */}
-        {showLottery && finished && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: windowWidth < 768 ? '20px' : '25px',
-            animation: 'fadeIn 0.4s ease',
-            alignItems: 'center',
-            maxHeight: '100vh',
-            overflowY: 'auto',
-            padding: windowWidth < 768 ? '20px' : '30px',
-            width: '100%'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{
-              position: 'relative',
-              width: '100%',
-              height: windowWidth < 768 ? '250px' : '350px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src="/survey/4.png"
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div style={{ width: '100%', maxWidth: '500px' }}>
-              <h2 style={{ 
-                fontSize: windowWidth < 768 ? '20px' : '24px',
-                fontWeight: 600,
-                marginBottom: windowWidth < 768 ? '20px' : '25px',
-                color: '#fff',
-                fontFamily: 'Georgia, serif',
-                lineHeight: 1.4,
-                textAlign: 'center'
-              }}>
-                {isRolling ? 'Checking your entry...' : lotteryResult === 'win' ? '🎉 Congratulations! 🎉' : 'Better luck next time!'}
-              </h2>
-
-              {/* Rolling board animation */}
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                minHeight: windowWidth < 768 ? '240px' : '260px',
-                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
-                borderRadius: '12px',
-                border: '3px solid rgba(255, 255, 255, 0.2)',
-                overflow: 'visible',
-                marginBottom: windowWidth < 768 ? '20px' : '25px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-                padding: windowWidth < 768 ? '24px 16px' : '32px 24px',
-                boxSizing: 'border-box'
-              }}>
-                {isRolling ? (
-                  <div style={{
-                    display: 'flex',
-                    gap: '15px',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                    minHeight: '200px',
-                    position: 'relative'
-                  }}>
-                    {['🎰', '🎲', '🎯', '🎁', '🍀', '⭐'].map((symbol, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          fontSize: '48px',
-                          animation: 'rollDown 0.2s linear infinite',
-                          animationDelay: `${index * 0.05}s`,
-                          opacity: 0.8
-                        }}
-                      >
-                        {symbol}
-                      </div>
-                    ))}
-                  </div>
-                ) : lotteryResult === 'win' ? (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: windowWidth < 768 ? '14px' : '18px',
-                    width: '100%',
-                    minHeight: '100%',
-                    padding: windowWidth < 768 ? '8px 0' : '12px 0'
-                  }}>
-                    <div style={{ fontSize: windowWidth < 768 ? '56px' : '64px' }}>🎁</div>
-                    <div style={{
-                      fontSize: windowWidth < 768 ? '20px' : '24px',
-                      fontWeight: 700,
-                      color: '#4ade80',
-                      textAlign: 'center',
-                      lineHeight: 1.3,
-                      padding: '0 8px'
-                    }}>
-                      You Won a Free Drink!
-                    </div>
-                    <div style={{
-                      fontSize: windowWidth < 768 ? '13px' : '15px',
-                      color: '#cccccc',
-                      textAlign: 'center',
-                      padding: '0 12px',
-                      lineHeight: 1.5
-                    }}>
-                      Show this message at the counter to claim your free drink
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: windowWidth < 768 ? '12px' : '16px',
-                    width: '100%',
-                    minHeight: '100%'
-                  }}>
-                    <div style={{ fontSize: windowWidth < 768 ? '60px' : '70px' }}>😊</div>
-                    <div style={{
-                      fontSize: windowWidth < 768 ? '20px' : '24px',
-                      fontWeight: 600,
-                      color: '#ffffff',
-                      textAlign: 'center',
-                      lineHeight: 1.3
-                    }}>
-                      Thanks for participating!
-                    </div>
-                    <div style={{
-                      fontSize: windowWidth < 768 ? '14px' : '16px',
-                      color: '#cccccc',
-                      textAlign: 'center',
-                      padding: '0 10px',
-                      lineHeight: 1.5
-                    }}>
-                      Keep an eye out for future promotions
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Fortune wisdom - show after lottery result */}
-              {!isRolling && lotteryResult && (
-                <div style={{
-                  marginTop: windowWidth < 768 ? '20px' : '25px',
-                  width: '100%'
-                }}>
-                  <h3 style={{
-                    fontSize: windowWidth < 768 ? '18px' : '20px',
-                    fontWeight: 600,
-                    marginBottom: windowWidth < 768 ? '12px' : '16px',
-                    color: '#fff',
-                    fontFamily: 'Georgia, serif',
-                    textAlign: 'center'
-                  }}>
-                    Your Fortune
-                  </h3>
-                  
-                  {/* Fortune slip */}
-                  <div style={{
-                    position: 'relative',
-                    margin: '0 auto',
-                    padding: windowWidth < 768 ? '16px' : '20px',
-                    background: '#fff',
-                    border: 'none',
-                    maxWidth: '350px',
-                    boxShadow: '0 5px 15px rgba(235, 37, 42, 0.2)'
-                  }}>
-                    <p style={{ 
-                      fontStyle: 'italic', 
-                      fontSize: windowWidth < 768 ? '14px' : '16px',
-                      color: '#333',
-                      fontWeight: 500,
-                      lineHeight: 1.6,
-                      fontFamily: 'Georgia, serif',
-                      position: 'relative',
-                      textAlign: 'center',
-                      margin: 0
-                    }}>
-                      &quot;{fortuneWisdom}&quot;
-                    </p>
-                    
-                    <div style={{
-                      position: 'absolute',
-                      top: '-2px',
-                      left: '15%',
-                      right: '15%',
-                      height: '3px',
-                      background: '#EB252A'
-                    }} />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Questions screen */}
-        {showQuestions && !finished && !showContactQuestion && !showLottery && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '30px'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{
-              position: 'relative',
-              width: '100%',
-              height: windowWidth < 768 ? '250px' : '350px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src={getCurrentImage()}
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: surveyType === 'operational'
-                    ? 'brightness(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.15))'
-                    : 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div style={{ 
-              animation: 'fadeIn 0.4s ease',
-            }}>
-              <h2 style={{ 
-                fontSize: '24px',
-                fontWeight: 600,
-                marginBottom: '24px',
-                color: '#fff',
-                fontFamily: 'Georgia, serif',
-                lineHeight: 1.4
-              }}>
-                {questions[questionIndex]}
-              </h2>
-              
-              {/* Clickable emoji indicators - work on both mobile and desktop */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px',
-                padding: '0 30px',
-                gap: '20px'
-              }}>
-                {/* Left emoji - clickable */}
-                <div
-                  onClick={() => handleEmojiClick('left')}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    opacity: clickedEmoji === 'left' ? 1 : 0.7,
-                    transform: clickedEmoji === 'left' ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                  onMouseEnter={e => {
-                    if (clickedEmoji !== 'left') {
-                      e.currentTarget.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (clickedEmoji !== 'left') {
-                      e.currentTarget.style.opacity = '0.7';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }
-                  }}
-                >
-                  <div style={{ fontSize: '48px' }}>😞</div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}>
-                    {surveyType === 'operational' ? 'Not Satisfied' : 'Left'}
-                  </div>
-                </div>
-
-                {/* Right emoji - clickable */}
-                <div
-                  onClick={() => handleEmojiClick('right')}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    opacity: clickedEmoji === 'right' ? 1 : 0.7,
-                    transform: clickedEmoji === 'right' ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                  onMouseEnter={e => {
-                    if (clickedEmoji !== 'right') {
-                      e.currentTarget.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (clickedEmoji !== 'right') {
-                      e.currentTarget.style.opacity = '0.7';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }
-                  }}
-                >
-                  <div style={{ fontSize: '48px' }}>😊</div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}>
-                    {surveyType === 'operational' ? 'Satisfied' : 'Right'}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Progress indicator */}
-              <div style={{ 
-                marginTop: '30px', 
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '10px'
-              }}>
-                {questions.map((_, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{
-                      width: '30px',
-                      height: '4px',
-                      background: idx === questionIndex ? '#ffffff' : '#333333',
-                      transition: 'all 0.3s ease'
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Result screen */}
-        {finished && !showLottery && (
-          <div style={{ 
-            animation: 'fadeIn 0.8s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: windowWidth < 768 ? '20px' : '25px',
-            maxHeight: '100vh',
-            overflowY: 'auto',
-            padding: windowWidth < 768 ? '20px' : '30px'
-          }}>
-            {/* Fortune cookie image - smaller */}
-            <div style={{ 
-              position: 'relative', 
-              width: '100%',
-              height: windowWidth < 768 ? '150px' : '180px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src="/survey/4.png"
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 150 : 180}
-                height={windowWidth < 768 ? 150 : 180}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s ease',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div style={{ width: '100%', maxWidth: '500px' }}>
-              <h2 style={{ 
-                fontSize: windowWidth < 768 ? '20px' : '24px',
-                fontWeight: 700,
-                marginBottom: windowWidth < 768 ? '12px' : '16px',
-                color: '#fff',
-                fontFamily: 'Georgia, serif',
-                textAlign: 'center'
-              }}>
-                Your Fortune Awaits
-              </h2>
-              
-              {/* Fortune slip - smaller */}
-              <div style={{
-                position: 'relative',
-                margin: windowWidth < 768 ? '0 auto 16px' : '0 auto 20px',
-                padding: windowWidth < 768 ? '16px' : '20px',
-                background: '#fff',
-                border: 'none',
-                maxWidth: '350px',
-                boxShadow: '0 5px 15px rgba(235, 37, 42, 0.2)'
-              }}>
-                <p style={{ 
-                  fontStyle: 'italic', 
-                  fontSize: windowWidth < 768 ? '14px' : '16px',
-                  color: '#333',
-                  fontWeight: 500,
-                  lineHeight: 1.6,
-                  fontFamily: 'Georgia, serif',
-                  position: 'relative',
-                  textAlign: 'center',
-                  margin: 0
-                }}>
-                  &quot;{fortuneWisdom}&quot;
-                </p>
-                
-                <div style={{
-                  position: 'absolute',
-                  top: '-2px',
-                  left: '15%',
-                  right: '15%',
-                  height: '3px',
-                  background: '#EB252A'
-                }} />
-              </div>
-              
-              {/* Contact input for lottery - only show if lottery hasn't been shown yet */}
-              {!showLottery && (
-              <div style={{
-                marginTop: windowWidth < 768 ? '16px' : '20px',
-                padding: windowWidth < 768 ? '20px' : '24px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}>
-                <h3 style={{
-                  fontSize: windowWidth < 768 ? '18px' : '20px',
-                  fontWeight: 600,
-                  marginBottom: windowWidth < 768 ? '8px' : '12px',
-                  color: '#fff',
-                  fontFamily: 'Georgia, serif',
-                  textAlign: 'center'
-                }}>
-                  Enter to Win a Free Drink!
-                </h3>
-                
-                <p style={{
-                  fontSize: windowWidth < 768 ? '12px' : '14px',
-                  color: '#cccccc',
-                  marginBottom: windowWidth < 768 ? '16px' : '20px',
-                  textAlign: 'center',
-                  lineHeight: 1.5
-                }}>
-                  Enter your phone number or email to participate in our free drink lottery
-                </p>
-
-                {/* Contact type selection */}
-                <div style={{
-                  display: 'flex',
-                  gap: windowWidth < 768 ? '10px' : '15px',
-                  marginBottom: windowWidth < 768 ? '16px' : '20px',
-                  justifyContent: 'center'
-                }}>
-                  <button
-                    onClick={() => {
-                      setContactType('phone');
-                      setContactValue('');
-                    }}
-                    style={{
-                      padding: windowWidth < 768 ? '10px 20px' : '12px 24px',
-                      fontSize: windowWidth < 768 ? '12px' : '14px',
-                      cursor: 'pointer',
-                      backgroundColor: contactType === 'phone' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)',
-                      border: '2px solid #ffffff',
-                      borderRadius: '25px',
-                      color: contactType === 'phone' ? '#000000' : '#ffffff',
-                      fontWeight: 600,
-                      transition: 'all 0.3s ease',
-                      outline: 'none'
-                    }}
-                  >
-                    Phone
-                  </button>
-                  <button
-                    onClick={() => {
-                      setContactType('email');
-                      setContactValue('');
-                    }}
-                    style={{
-                      padding: windowWidth < 768 ? '10px 20px' : '12px 24px',
-                      fontSize: windowWidth < 768 ? '12px' : '14px',
-                      cursor: 'pointer',
-                      backgroundColor: contactType === 'email' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)',
-                      border: '2px solid #ffffff',
-                      borderRadius: '25px',
-                      color: contactType === 'email' ? '#000000' : '#ffffff',
-                      fontWeight: 600,
-                      transition: 'all 0.3s ease',
-                      outline: 'none'
-                    }}
-                  >
-                    Email
-                  </button>
-                </div>
-
-                {/* Contact input */}
-                {contactType && (
-                  <div style={{ marginBottom: windowWidth < 768 ? '16px' : '20px' }}>
-                    <input
-                      type={contactType === 'phone' ? 'tel' : 'email'}
-                      value={contactValue}
-                      onChange={(e) => setContactValue(e.target.value)}
-                      placeholder={contactType === 'phone' ? 'Enter your phone number' : 'Enter your email'}
-                      style={{
-                        width: '100%',
-                        padding: windowWidth < 768 ? '12px' : '16px',
-                        fontSize: windowWidth < 768 ? '14px' : '16px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        border: '2px solid rgba(255, 255, 255, 0.3)',
-                        borderRadius: '8px',
-                        color: '#ffffff',
-                        outline: 'none',
-                        transition: 'all 0.3s ease',
-                        boxSizing: 'border-box'
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = '#ffffff';
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Submit button */}
-                <button
-                  onClick={handleContactSubmit}
-                  disabled={!contactType || !contactValue.trim() || isSavingContact}
-                  style={{
-                    width: '100%',
-                    padding: windowWidth < 768 ? '14px 24px' : '16px 32px',
-                    fontSize: windowWidth < 768 ? '14px' : '16px',
-                    cursor: (!contactType || !contactValue.trim() || isSavingContact) ? 'not-allowed' : 'pointer',
-                    backgroundColor: (!contactType || !contactValue.trim() || isSavingContact) ? 'rgba(255, 255, 255, 0.3)' : '#ffffff',
-                    border: 'none',
-                    borderRadius: '50px',
-                    color: '#000000',
-                    fontWeight: 600,
-                    letterSpacing: '1px',
-                    transition: 'all 0.3s ease',
-                    outline: 'none',
-                    textTransform: 'uppercase',
-                    opacity: (!contactType || !contactValue.trim() || isSavingContact) ? 0.5 : 1
-                  }}
-                >
-                  {isSavingContact ? 'Submitting...' : 'Enter Lottery'}
-                </button>
-              </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="relative w-full h-screen overflow-hidden">
+      <ParticleCanvas />
       
-      {/* Mobile swipe instruction */}
-      {showQuestions && !finished && !showContactQuestion && !showLottery && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '12px 20px',
-          borderRadius: '4px',
-          background: 'rgba(40, 40, 40, 0.8)',
-          fontSize: '14px',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 10
-        }}>
-          <span>Swipe left or right to continue</span>
-        </div>
-      )}
-      
-      {/* Styles for animations */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+        .glass-card {
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        @keyframes rollDown {
-          0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
-          50% { opacity: 1; }
-          100% { transform: translateY(50px) rotate(360deg); opacity: 0; }
-        }
-
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-          background: #000000;
-        }
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+        .animate-slideUp { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
       `}</style>
+
+      <div className="fixed inset-0 flex flex-col items-center justify-center p-5 md:p-8">
+        {/* MAIN CARD */}
+        <div 
+          className="glass-card w-full max-w-[420px] min-h-[600px] rounded-[32px] relative overflow-hidden flex flex-col text-white"
+          style={{
+            touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
+            ...((showQuestions && !finished) ? getCardTransform() : {})
+          }}
+          onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
+          onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
+          onTouchEnd={showQuestions && !finished ? handleTouchEnd : undefined}
+        >
+
+            {/* Swipe Feedback Overlay */}
+            <div 
+                className={`absolute inset-0 pointer-events-none z-10 flex items-center p-10 transition-opacity duration-300
+                ${swipeDirection === 'left' ? 'justify-start bg-gradient-to-r from-red-500/20 to-transparent' : ''}
+                ${swipeDirection === 'right' ? 'justify-end bg-gradient-to-l from-green-500/20 to-transparent' : ''}
+                ${!swipeDirection ? 'opacity-0' : 'opacity-100'}
+                `}
+            >
+                {swipeDirection && (
+                    <div className="text-6xl drop-shadow-lg transform scale-110 transition-transform">
+                        {swipeDirection === 'left' ? '😞' : '😊'}
+                    </div>
+                )}
+            </div>
+
+            {/* CONTENT AREA */}
+            <div className="flex-1 flex flex-col p-8 items-center justify-center w-full">
+                
+                {/* 1. START SCREEN */}
+                {!showQuestions && !finished && !showContactQuestion && !showLottery && (
+                    <div className="animate-slideUp w-full text-center flex flex-col items-center">
+                        <div className="w-60 h-60 mb-8 relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 group">
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10" />
+                            <Image 
+                                src={getCurrentImage()} 
+                                alt="Welcome" 
+                                width={240}
+                                height={240}
+                                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                                priority
+                            />
+                        </div>
+                        
+                        <h1 className="font-playfair text-3xl font-semibold mb-2 leading-tight tracking-tight text-white">
+                            {surveyTitle || 'The Golden Lotus'}
+                        </h1>
+                        
+                        <p className="text-white/60 mb-8 font-inter text-sm tracking-wide uppercase">
+                            {surveyLocation || 'Your favorite restaurant'}
+                        </p>
+                        
+                        <p className="text-white/80 mb-10 text-[15px] leading-relaxed max-w-[280px] font-light">
+                            We value your presence. Help us curate better moments with a few simple touches.
+                        </p>
+                        
+                        <button 
+                            onClick={handleStart}
+                            className="bg-white text-black px-12 py-4 rounded-full text-sm font-bold tracking-widest uppercase 
+                            hover:bg-gray-200 active:scale-95 transition-all duration-300 shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]"
+                        >
+                            Begin
+                        </button>
+                    </div>
+                )}
+
+                {/* 3. CONTACT INPUT */}
+                {showContactQuestion && !finished && (
+                    <div className="animate-slideUp w-full text-center flex flex-col items-center justify-center h-full">
+                        <div className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(212,175,55,0.4)]">
+                            <Trophy className="text-black w-8 h-8" />
+                        </div>
+
+                        <h2 className="font-playfair text-3xl mb-3 text-white">Stay connected</h2>
+                        <p className="text-white/60 mb-8 text-sm max-w-[260px] leading-relaxed">
+                            Enter your contact details for a chance to win a complimentary drink.
+                        </p>
+
+                        {/* Toggle */}
+                        <div className="bg-white/10 p-1 rounded-full inline-flex mb-8 backdrop-blur-md">
+                            <button 
+                                onClick={() => { setContactType('phone'); setContactValue(''); }}
+                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                ${contactType === 'phone' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                            >
+                                Phone
+                            </button>
+                            <button 
+                                onClick={() => { setContactType('email'); setContactValue(''); }}
+                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                ${contactType === 'email' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                            >
+                                Email
+                            </button>
+                        </div>
+
+                        {contactType && (
+                            <div className="w-full mb-6 animate-fadeIn">
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
+                                        {contactType === 'phone' ? <Phone size={18} /> : <Mail size={18} />}
+                                    </div>
+                                    <input
+                                        type={contactType === 'phone' ? 'tel' : 'email'}
+                                        value={contactValue}
+                                        onChange={(e) => setContactValue(e.target.value)}
+                                        placeholder={contactType === 'phone' ? '(555) 000-0000' : 'you@example.com'}
+                                        className="w-full bg-white/5 border border-white/20 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-white/20 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all text-center"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-3 w-full">
+                            <button
+                                onClick={handleContactSubmit}
+                                disabled={!contactType || !contactValue.trim() || isSavingContact}
+                                className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-300
+                                ${(!contactType || !contactValue.trim() || isSavingContact) 
+                                    ? 'bg-white/10 text-white/20 cursor-not-allowed' 
+                                    : 'bg-[#D4AF37] text-black hover:bg-[#E5C158] shadow-[0_0_20px_rgba(212,175,55,0.3)]'}`}
+                            >
+                                {isSavingContact ? 'Submitting...' : 'Enter Draw'}
+                            </button>
+                            <button
+                                onClick={handleSkipContact}
+                                className="text-xs uppercase tracking-widest text-white/40 hover:text-white transition-colors py-2"
+                            >
+                                No thanks, skip
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. LOTTERY ANIMATION */}
+                {showLottery && (
+                    <div className="animate-fadeIn w-full text-center flex flex-col items-center justify-center h-full">
+                        <h2 className="font-playfair text-2xl mb-8 text-[#D4AF37]">
+                            {isRolling ? 'Manifesting luck...' : lotteryResult === 'win' ? 'Destiny calls!' : 'Almost there'}
+                        </h2>
+                        
+                        <div className="w-full h-40 bg-black/40 rounded-2xl border border-[#D4AF37]/50 flex items-center justify-center mb-8 overflow-hidden relative shadow-inner shadow-black">
+                            <div className="absolute inset-0 bg-[#D4AF37]/5 animate-pulse" />
+                             
+                             {isRolling ? (
+                                 <div className="flex gap-8 text-5xl animate-bounce">
+                                    <span>🎰</span><span>🎲</span><span>✨</span>
+                                 </div>
+                             ) : lotteryResult === 'win' ? (
+                                 <div className="flex flex-col items-center animate-slideUp">
+                                    <div className="flex gap-4 mb-2 text-[#D4AF37]">
+                                        <Wine size={40} />
+                                        <PartyPopper size={40} />
+                                    </div>
+                                    <span className="text-4xl font-bold text-white">WINNER</span>
+                                 </div>
+                             ) : (
+                                 <div className="animate-slideUp text-gray-400 flex flex-col items-center">
+                                     <XCircle size={48} className="mb-2 opacity-50"/>
+                                     <span className="text-xl">Not this time</span>
+                                 </div>
+                             )}
+                        </div>
+
+                        {!isRolling && lotteryResult === 'win' && (
+                            <div className="bg-green-500/20 border border-green-500/30 p-4 rounded-xl text-green-300 text-sm font-medium animate-fadeIn">
+                                Show this screen to your server to claim your complimentary drink.
+                            </div>
+                        )}
+                         {!isRolling && lotteryResult === 'lose' && (
+                            <div className="text-white/50 text-sm animate-fadeIn max-w-xs">
+                                The stars didn't align today, but we look forward to serving you again soon.
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 2. QUESTION SCREEN */}
+                {showQuestions && !finished && !showContactQuestion && !showLottery && (
+                     <div className="animate-fadeIn w-full h-full flex flex-col justify-between">
+                        {/* Progress Bar */}
+                        <div className="flex gap-1 mb-6">
+                            {questions.map((_, idx) => (
+                                <div key={idx} 
+                                    className={`h-1 flex-1 rounded-full transition-all duration-500 
+                                    ${idx <= questionIndex ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/10'}`}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                             <div className="w-52 h-52 relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                                <Image 
+                                    src={getCurrentImage()} 
+                                    alt="Question Context" 
+                                    width={208}
+                                    height={208}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            
+                            <h2 className="font-playfair text-2xl md:text-3xl text-center leading-tight mb-6 px-2 text-white">
+                                {questions[questionIndex]}
+                            </h2>
+
+                            {/* Answer Options - Always Visible */}
+                            <div className="flex w-full justify-between px-4 gap-4 mb-6">
+                                <button 
+                                    onClick={() => handleEmojiClick('left')} 
+                                    disabled={isProcessingAnswer}
+                                    className={`flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-200 group
+                                    ${currentQuestionAnswered && pendingAnswerDirection === 'left' ? 'ring-2 ring-[#D4AF37] bg-white/10' : ''}
+                                    ${isProcessingAnswer ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <div className="text-4xl transform group-hover:scale-110 transition-transform group-active:scale-90">😞</div>
+                                    <span className="text-[10px] uppercase tracking-widest opacity-70 font-semibold text-white">
+                                        {surveyType === 'operational' ? 'Dissatisfied' : 'Left'}
+                                    </span>
+                                </button>
+
+                                <button 
+                                    onClick={() => handleEmojiClick('right')} 
+                                    disabled={isProcessingAnswer}
+                                    className={`flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-200 group
+                                    ${currentQuestionAnswered && pendingAnswerDirection === 'right' ? 'ring-2 ring-[#D4AF37] bg-white/10' : ''}
+                                    ${isProcessingAnswer ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <div className="text-4xl transform group-hover:scale-110 transition-transform group-active:scale-90">😊</div>
+                                    <span className="text-[10px] uppercase tracking-widest opacity-70 font-semibold text-white">
+                                        {surveyType === 'operational' ? 'Delighted' : 'Right'}
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Optional Details Section - Always Visible */}
+                            <div className="w-full space-y-3 animate-fadeIn">
+                                <p className="text-white/60 text-xs text-center">Add details (optional)</p>
+                                
+                                {/* Tabs */}
+                                <div className="bg-white/10 p-1 rounded-full inline-flex w-full backdrop-blur-md">
+                                    <button 
+                                        onClick={() => setDetailsTab('photo')}
+                                        className={`flex-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                        ${detailsTab === 'photo' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                                    >
+                                        <Camera size={12} className="inline mr-1.5" />
+                                        Photo
+                                    </button>
+                                    <button 
+                                        onClick={() => setDetailsTab('text')}
+                                        className={`flex-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                        ${detailsTab === 'text' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                                    >
+                                        Text
+                                    </button>
+                                </div>
+
+                                {/* Photo Tab */}
+                                {detailsTab === 'photo' && (
+                                    <div className="space-y-2">
+                                        {questionDetails[questionIndex]?.photoPreview ? (
+                                            <div className="relative">
+                                                <img 
+                                                    src={questionDetails[questionIndex].photoPreview!} 
+                                                    alt="Preview" 
+                                                    className="w-full h-28 object-cover rounded-xl"
+                                                />
+                                                <button
+                                                    onClick={handleRemovePhoto}
+                                                    className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 rounded-full p-1.5 transition-colors"
+                                                >
+                                                    <X size={12} className="text-white" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-white/20 rounded-xl cursor-pointer hover:border-white/40 transition-colors bg-white/5">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <Camera size={20} className="text-white/40 mb-1" />
+                                                    <p className="text-xs text-white/60">Tap to add photo</p>
+                                                </div>
+                                                <input 
+                                                    type="file" 
+                                                    className="hidden" 
+                                                    accept="image/*"
+                                                    onChange={handlePhotoSelect}
+                                                />
+                                            </label>
+                                        )}
+                                        {uploadError && (
+                                            <p className="text-red-400 text-xs text-center">{uploadError}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Text Tab */}
+                                {detailsTab === 'text' && (
+                                    <div className="space-y-2">
+                                        <textarea
+                                            value={questionDetails[questionIndex]?.text || ''}
+                                            onChange={handleTextChange}
+                                            placeholder="Share your feedback..."
+                                            className="w-full bg-white/5 border border-white/20 rounded-xl py-2.5 px-3 text-white placeholder:text-white/20 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all resize-none text-sm"
+                                            rows={3}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Continue Button - Show when answer is selected */}
+                                {currentQuestionAnswered && (
+                                    <div className="flex flex-col gap-2 pt-2">
+                                        <button
+                                            onClick={handleContinueFromDetails}
+                                            disabled={isProcessingAnswer || isUploadingMedia}
+                                            className={`w-full py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-300
+                                            ${(isProcessingAnswer || isUploadingMedia) 
+                                                ? 'bg-white/10 text-white/20 cursor-not-allowed' 
+                                                : 'bg-[#D4AF37] text-black hover:bg-[#E5C158] shadow-[0_0_20px_rgba(212,175,55,0.3)]'}`}
+                                        >
+                                            {isUploadingMedia ? 'Uploading...' : isProcessingAnswer ? 'Saving...' : 'Continue'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {!currentQuestionAnswered && (
+                            <div className="text-center opacity-50 text-[10px] uppercase tracking-widest mt-4 text-white">
+                                Swipe card to answer
+                            </div>
+                        )}
+                     </div>
+                )}
+
+                {/* 5. FINAL FORTUNE */}
+                {finished && !showLottery && (
+                     <div className="animate-fadeIn w-full text-center flex flex-col items-center">
+                        <div className="w-32 h-32 mb-6 relative">
+                             <Image 
+                                 src="/survey/4.png" 
+                                 alt="Fortune" 
+                                 width={128}
+                                 height={128}
+                                 className="w-full h-full object-contain opacity-90"
+                             />
+                        </div>
+                        
+                        <h2 className="font-playfair text-2xl text-[#D4AF37] mb-6">
+                            Your Fortune
+                        </h2>
+                        
+                        <div className="bg-[#fffdf5] text-black p-8 relative mb-8 shadow-2xl max-w-xs mx-auto transform rotate-1">
+                            <p className="font-playfair italic text-lg leading-relaxed opacity-80">
+                                &quot;{fortuneWisdom}&quot;
+                            </p>
+                             <div className="h-1 w-12 bg-[#D4AF37] mx-auto mt-6" />
+                        </div>
+                        
+                        <p className="text-[10px] opacity-40 uppercase tracking-[0.3em]">Thank you for visiting</p>
+                     </div>
+                )}
+            </div>
+        </div>
+      </div>
     </div>
   );
 }
