@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { useSearchParams } from 'next/navigation';
 import { OPERATIONAL_QUESTIONS } from '@/utils/operational-questions';
-import { Phone, Mail, Trophy, XCircle, Wine, PartyPopper, Camera, X, Image as ImageIcon } from 'lucide-react';
+import { Phone, Mail, Trophy, XCircle, Wine, PartyPopper, Camera, X } from 'lucide-react';
 
 // --- CANVAS COMPONENT FOR AMBIENT BACKGROUND ---
 const ParticleCanvas = () => {
@@ -28,7 +28,18 @@ const ParticleCanvas = () => {
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
-    const particles: any[] = [];
+    interface ParticleType {
+      x: number;
+      y: number;
+      size: number;
+      speedX: number;
+      speedY: number;
+      opacity: number;
+      hue: number;
+      update: () => void;
+      draw: () => void;
+    }
+    const particles: ParticleType[] = [];
     const particleCount = 60; 
 
     class Particle {
@@ -205,8 +216,8 @@ function SurveyContent() {
   const touchEndX = useRef(0);
   const touchStartTime = useRef(0);
 
-  // For emoji click animation
-  const [clickedEmoji, setClickedEmoji] = useState<'left' | 'right' | null>(null);
+  // For emoji click animation (kept for potential future use)
+  const [, setClickedEmoji] = useState<'left' | 'right' | null>(null);
 
   // Details input state
   const [currentQuestionAnswered, setCurrentQuestionAnswered] = useState(false);
@@ -217,7 +228,6 @@ function SurveyContent() {
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
   const [activeSurveyId, setActiveSurveyId] = useState<number | null>(null);
   const [pendingAnswerDirection, setPendingAnswerDirection] = useState<string | null>(null);
-  const [savedAnswerIds, setSavedAnswerIds] = useState<Array<{ questionIndex: number; answerId: number }>>([]);
 
   // Reset clicked emoji state when question changes
   useEffect(() => {
@@ -231,7 +241,7 @@ function SurveyContent() {
     if (questions.length > 0 && questionDetails.length === 0) {
       setQuestionDetails(Array(questions.length).fill(null).map(() => ({ photo: null, photoPreview: null, text: '' })));
     }
-  }, [questions.length]);
+  }, [questions.length, questionDetails.length]);
   
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
@@ -402,7 +412,7 @@ function SurveyContent() {
       const filePath = `${restaurantId}/${activeSurveyId}/${fileName}`;
 
       // Upload to storage bucket 'survey-media'
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('survey-media')
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -632,7 +642,7 @@ function SurveyContent() {
     } finally {
       setIsProcessingAnswer(false);
     }
-  }, [pendingAnswerDirection, responseId, restaurantCode, questionIndex, questionMetadata, answers, questions, questionDetails]);
+  }, [pendingAnswerDirection, responseId, restaurantCode, questionIndex, questionMetadata, answers, questions, saveQuestionDetails]);
 
   // Handle answer submission - show details input on same page
   const handleAnswer = useCallback((direction: string) => {
@@ -774,20 +784,6 @@ function SurveyContent() {
     });
   };
 
-  // Handle skip details
-  const handleSkipDetails = async () => {
-    if (!pendingAnswerDirection) return;
-    
-    // Clear details for current question
-    setQuestionDetails(prev => {
-      const newDetails = [...prev];
-      newDetails[questionIndex] = { photo: null, photoPreview: null, text: '' };
-      return newDetails;
-    });
-    
-    // Continue without saving details
-    await handleContinueFromDetails();
-  };
   
   // Swipe detection handlers with velocity and smooth animations
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -1088,7 +1084,7 @@ function SurveyContent() {
                         )}
                          {!isRolling && lotteryResult === 'lose' && (
                             <div className="text-white/50 text-sm animate-fadeIn max-w-xs">
-                                The stars didn't align today, but we look forward to serving you again soon.
+                                The stars didn&apos;t align today, but we look forward to serving you again soon.
                             </div>
                         )}
                     </div>
@@ -1179,10 +1175,13 @@ function SurveyContent() {
                                     <div className="space-y-2">
                                         {questionDetails[questionIndex]?.photoPreview ? (
                                             <div className="relative">
-                                                <img 
+                                                <Image 
                                                     src={questionDetails[questionIndex].photoPreview!} 
                                                     alt="Preview" 
+                                                    width={400}
+                                                    height={112}
                                                     className="w-full h-28 object-cover rounded-xl"
+                                                    unoptimized
                                                 />
                                                 <button
                                                     onClick={handleRemovePhoto}
