@@ -5,21 +5,165 @@ import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { useSearchParams } from 'next/navigation';
 import { OPERATIONAL_QUESTIONS } from '@/utils/operational-questions';
+import { Phone, Mail, Trophy, XCircle, Wine, PartyPopper, Camera, X } from 'lucide-react';
+
+// --- CANVAS COMPONENT FOR AMBIENT BACKGROUND ---
+const ParticleCanvas = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    
+    // Set actual canvas size to handle retina displays for sharper rendering
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    interface ParticleType {
+      x: number;
+      y: number;
+      size: number;
+      speedX: number;
+      speedY: number;
+      opacity: number;
+      hue: number;
+      update: () => void;
+      draw: () => void;
+    }
+    const particles: ParticleType[] = [];
+    const particleCount = 60; 
+
+    class Particle {
+      x: number;
+      y: number;
+      size: number;
+      speedX: number;
+      speedY: number;
+      opacity: number;
+      hue: number;
+
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = Math.random() * 0.4 - 0.2;
+        this.speedY = Math.random() * 0.4 - 0.2;
+        this.opacity = Math.random() * 0.5 + 0.1;
+        this.hue = Math.random() * 40 + 30; // Warm gold/amber hues
+      }
+
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        
+        // Pulse effect
+        this.opacity += (Math.random() * 0.02 - 0.01);
+        if (this.opacity < 0.1) this.opacity = 0.1;
+        if (this.opacity > 0.6) this.opacity = 0.6;
+
+        // Wrap around screen
+        if (this.x > width) this.x = 0;
+        if (this.x < 0) this.x = width;
+        if (this.y > height) this.y = 0;
+        if (this.y < 0) this.y = height;
+      }
+
+      draw() {
+        if (!ctx) return;
+        ctx.fillStyle = `hsla(${this.hue}, 100%, 70%, ${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const init = () => {
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+    };
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+      
+      // subtle gradient background drawn on canvas to blend perfectly
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#050505'); 
+      gradient.addColorStop(1, '#1a1a1a');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    };
+
+    init();
+    animate();
+
+    const handleResize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: -1,
+        pointerEvents: 'none'
+      }} 
+    />
+  );
+};
+
+// --- LOADING COMPONENT ---
+function LoadingScreen() {
+    return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-black text-white font-sans">
+            <div className="spinner mb-6"></div>
+            <p className="opacity-70 tracking-[0.2em] uppercase text-xs animate-pulse">Loading Experience</p>
+            <style>{`
+                .spinner {
+                    width: 40px;
+                    height: 40px;
+                    border: 2px solid rgba(255,255,255,0.1);
+                    border-radius: 50%;
+                    border-top-color: #D4AF37;
+                    animation: spin 1s ease-in-out infinite;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+            `}</style>
+        </div>
+    );
+}
 
 export default function Home() {
   return (
-    <Suspense fallback={
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000000',
-        color: '#ffffff'
-      }}>
-        Loading...
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen />}>
       <SurveyContent />
     </Suspense>
   );
@@ -40,6 +184,9 @@ function SurveyContent() {
 
   // Questions state
   const [questions, setQuestions] = useState<string[]>([]);
+  // Store question metadata (id and text) for saving individual answers
+  // Note: survey_question_id is UUID type in the database
+  const [questionMetadata, setQuestionMetadata] = useState<Array<{ id: string | null; question_text: string }>>([]);
 
   // State to track which question we're on
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -47,6 +194,18 @@ function SurveyContent() {
   const [finished, setFinished] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
   const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
+  
+  // Contact details state
+  const [showContactQuestion, setShowContactQuestion] = useState(false);
+  const [responseId, setResponseId] = useState<number | null>(null);
+  const [contactType, setContactType] = useState<'phone' | 'email' | null>(null);
+  const [contactValue, setContactValue] = useState<string>('');
+  const [isSavingContact, setIsSavingContact] = useState(false);
+  
+  // Lottery animation state
+  const [showLottery, setShowLottery] = useState(false);
+  const [lotteryResult, setLotteryResult] = useState<'win' | 'lose' | null>(null);
+  const [isRolling, setIsRolling] = useState(false);
   
   // For swipe gestures
   const [isSwiping, setIsSwiping] = useState(false);
@@ -57,29 +216,32 @@ function SurveyContent() {
   const touchEndX = useRef(0);
   const touchStartTime = useRef(0);
 
-  // For emoji click animation
-  const [clickedEmoji, setClickedEmoji] = useState<'left' | 'right' | null>(null);
+  // For emoji click animation (kept for potential future use)
+  const [, setClickedEmoji] = useState<'left' | 'right' | null>(null);
 
-  // For responsive design
-  const [windowWidth, setWindowWidth] = useState(0);
-
-  // Set up window width measurement
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    // Initialize on mount
-    handleResize();
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Details input state
+  const [currentQuestionAnswered, setCurrentQuestionAnswered] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<'photo' | 'text'>('photo');
+  const [questionDetails, setQuestionDetails] = useState<Array<{ photo: File | null; photoPreview: string | null; text: string }>>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [activeSurveyId, setActiveSurveyId] = useState<number | null>(null);
+  const [pendingAnswerDirection, setPendingAnswerDirection] = useState<string | null>(null);
 
   // Reset clicked emoji state when question changes
   useEffect(() => {
     setClickedEmoji(null);
+    setCurrentQuestionAnswered(false);
+    setPendingAnswerDirection(null);
   }, [questionIndex]);
+
+  // Initialize question details array when questions are loaded
+  useEffect(() => {
+    if (questions.length > 0 && questionDetails.length === 0) {
+      setQuestionDetails(Array(questions.length).fill(null).map(() => ({ photo: null, photoPreview: null, text: '' })));
+    }
+  }, [questions.length, questionDetails.length]);
   
   // Fortune cookie wisdom to show at the end
   const fortuneWisdom = "Your path is illuminated by the experiences you create. Stay curious, embrace change, and fortune will find you.";
@@ -108,6 +270,9 @@ function SurveyContent() {
           setIsLoading(false);
           return;
         }
+
+        // Store restaurant ID for photo uploads
+        setRestaurantId(restaurant.id);
 
         // Then fetch the active survey for this restaurant
         const { data: surveys, error: surveyError } = await supabase
@@ -146,24 +311,28 @@ function SurveyContent() {
         }
 
         // Load questions based on survey type
-        const sortedQuestions = surveys.survey_type === 'operational'
-          ? OPERATIONAL_QUESTIONS.map(q => q.question_text)
-          : surveys.survey_questions
-              .sort((a, b) => (a.position || 0) - (b.position || 0))
-              .map(q => q.question_text);
+        // Both operational and custom surveys have questions in survey_questions table
+        const sortedSurveyQuestions = surveys.survey_questions
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+        const sortedQuestions = sortedSurveyQuestions.map(q => q.question_text);
+        // Use the actual question UUIDs from the database for both types
+        const questionMeta = sortedSurveyQuestions.map(q => ({ id: q.id, question_text: q.question_text }));
 
         console.log('Fetched survey data:', {
           title: surveys.title,
           location: surveys.location,
           surveyType: surveys.survey_type,
           customImages: surveys.operational_images,
-          questions: sortedQuestions
+          questions: sortedQuestions,
+          questionMetadata: questionMeta
         });
 
         // Update state with survey data
         setSurveyTitle(surveys.title);
         setSurveyLocation(surveys.location);
         setQuestions(sortedQuestions);
+        setQuestionMetadata(questionMeta);
+        setActiveSurveyId(surveys.id);
         
         setIsLoading(false);
       } catch (err) {
@@ -212,6 +381,63 @@ function SurveyContent() {
     setShowQuestions(true);
   };
 
+  // Upload photo to Supabase Storage
+  const uploadPhotoToStorage = async (file: File, responseId: number, questionIndex: number): Promise<string | null> => {
+    if (!restaurantId || !activeSurveyId) {
+      console.error('Missing restaurant ID or survey ID for photo upload');
+      return null;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        setUploadError('File size must be less than 5MB');
+        return null;
+      }
+
+      // Validate file type (images only)
+      const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validImageTypes.includes(file.type)) {
+        setUploadError('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+        return null;
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const fileName = `${responseId}_${questionIndex}_${timestamp}.${fileExt}`;
+      const filePath = `${restaurantId}/${activeSurveyId}/${fileName}`;
+
+      // Upload to storage bucket 'survey-media'
+      const { error } = await supabase.storage
+        .from('survey-media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading photo:', error);
+        setUploadError('Failed to upload photo. Please try again.');
+        return null;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('survey-media')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Unexpected error uploading photo:', err);
+      setUploadError('An unexpected error occurred. Please try again.');
+      return null;
+    }
+  };
+
   // Handle emoji click with animation
   const handleEmojiClick = (direction: 'left' | 'right') => {
     // Don't process if already processing
@@ -224,20 +450,78 @@ function SurveyContent() {
     handleAnswer(direction);
   };
 
-  // Handle answer submission
-  const handleAnswer = useCallback(async (direction: string) => {
-    if (isProcessingAnswer) {
-      console.log('Already processing an answer, ignoring this one');
-      return;
+  // Save details to survey_response_details table
+  const saveQuestionDetails = async (answerId: number, questionIdx: number, responseId: number) => {
+    const details = questionDetails[questionIdx];
+    if (!details || (!details.photo && !details.text?.trim())) {
+      return; // No details to save
     }
-    
-    setIsProcessingAnswer(true);
-    
+
     try {
-      // Save the answer to the database
+      const supabase = createClient();
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      // Upload photo if exists
+      if (details.photo) {
+        setIsUploadingMedia(true);
+        setUploadError(null);
+        
+        mediaUrl = await uploadPhotoToStorage(details.photo, responseId, questionIdx);
+        if (mediaUrl) {
+          mediaType = 'image';
+        }
+        setIsUploadingMedia(false);
+      }
+
+      // Prepare details record
+      const detailsRecord: {
+        response_answer_id: number;
+        additional_text?: string;
+        media_url?: string;
+        media_type?: string;
+      } = {
+        response_answer_id: answerId
+      };
+
+      if (details.text?.trim()) {
+        detailsRecord.additional_text = details.text.trim();
+      }
+
+      if (mediaUrl) {
+        detailsRecord.media_url = mediaUrl;
+        detailsRecord.media_type = mediaType || 'image';
+      }
+
+      // Only insert if we have something to save
+      if (detailsRecord.additional_text || detailsRecord.media_url) {
+        const { error: detailsError } = await supabase
+          .from('survey_response_details')
+          .insert([detailsRecord]);
+
+        if (detailsError) {
+          console.error('Error saving question details:', detailsError);
+        } else {
+          console.log('Successfully saved question details for answer', answerId);
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error saving question details:', err);
+      setIsUploadingMedia(false);
+    }
+  };
+
+  // Handle continue from details input - save answer and details, then move to next question
+  const handleContinueFromDetails = useCallback(async () => {
+    if (!pendingAnswerDirection) return;
+
+    setIsProcessingAnswer(true);
+    setUploadError(null);
+
+    try {
       const supabase = createClient();
 
-      // First get the restaurant ID and active survey ID from the code
+      // Get restaurant and survey info
       const { data: restaurant } = await supabase
         .from('restaurants')
         .select('id')
@@ -246,10 +530,10 @@ function SurveyContent() {
 
       if (!restaurant) {
         console.error('Restaurant not found');
+        setIsProcessingAnswer(false);
         return;
       }
 
-      // Get the active survey ID
       const { data: activeSurvey } = await supabase
         .from('survey')
         .select('id')
@@ -261,25 +545,16 @@ function SurveyContent() {
 
       if (!activeSurvey) {
         console.error('Active survey not found');
+        setIsProcessingAnswer(false);
         return;
       }
 
-      // Update local state with the new answer
-      const updatedAnswers = [...answers, direction];
-      setAnswers(updatedAnswers);
-
-      // Save all answers at once when survey is complete
-      if (questionIndex === questions.length - 1) {
-        console.log('Saving final answers:', {
-          questions,
-          answers: updatedAnswers,
-          questionAnswers: updatedAnswers.reduce<Record<string, string>>((acc, ans, idx) => {
-            acc[questions[idx]] = ans;
-            return acc;
-          }, {})
-        });
-
-        const { error: responseError } = await supabase
+      // Create or get response_id
+      let currentResponseId = responseId;
+      if (!currentResponseId) {
+        // Create new response record
+        const updatedAnswers = [...answers, pendingAnswerDirection];
+        const { data: insertedData, error: responseError } = await supabase
           .from('survey_responses')
           .insert([{
             restaurant_id: restaurant.id,
@@ -289,32 +564,244 @@ function SurveyContent() {
               return acc;
             }, {}),
             submitted_at: new Date().toISOString()
-          }]);
+          }])
+          .select('id')
+          .single();
 
         if (responseError) {
-          console.error('Error saving responses:', responseError);
+          console.error('Error creating response:', responseError);
+          setIsProcessingAnswer(false);
+          return;
         }
+
+        currentResponseId = insertedData.id;
+        setResponseId(currentResponseId);
       }
-      
-      // Move to next question or finish
+
+      // Save the current answer to survey_response_answers
+      const questionMeta = questionMetadata[questionIndex];
+      if (!questionMeta?.id) {
+        console.error('Missing question ID for answer');
+        setIsProcessingAnswer(false);
+        return;
+      }
+
+      const { data: insertedAnswer, error: answerError } = await supabase
+        .from('survey_response_answers')
+        .insert([{
+          response_id: currentResponseId,
+          survey_question_id: questionMeta.id,
+          answer_value: pendingAnswerDirection
+        }])
+        .select('id')
+        .single();
+
+      if (answerError) {
+        console.error('Error saving answer:', answerError);
+        setIsProcessingAnswer(false);
+        return;
+      }
+
+      // Update local answers state
+      const updatedAnswers = [...answers, pendingAnswerDirection];
+      setAnswers(updatedAnswers);
+
+      // Update question_answers JSONB field in survey_responses if this is the last question
+      if (questionIndex === questions.length - 1) {
+        const questionAnswers = updatedAnswers.reduce<Record<string, string>>((acc, ans, idx) => {
+          acc[questions[idx]] = ans;
+          return acc;
+        }, {});
+
+        const supabase = createClient();
+        await supabase
+          .from('survey_responses')
+          .update({ question_answers: questionAnswers })
+          .eq('id', currentResponseId);
+      }
+
+      // Save details if provided
+      if (insertedAnswer && currentResponseId) {
+        await saveQuestionDetails(insertedAnswer.id, questionIndex, currentResponseId);
+      }
+
+      // Clear details input and move to next question
+      setCurrentQuestionAnswered(false);
+      setPendingAnswerDirection(null);
+
+      // Move to next question or show contact question
       if (questionIndex < questions.length - 1) {
         setQuestionIndex(prevIndex => prevIndex + 1);
       } else {
+        // End of questions - show contact question
         setShowQuestions(false);
-        setFinished(true);
+        setShowContactQuestion(true);
       }
     } catch (err) {
-      console.error('Error processing answer:', err);
+      console.error('Error processing continue from details:', err);
     } finally {
-      // Reset processing state after a delay
-      setTimeout(() => {
-        setIsProcessingAnswer(false);
-      }, 300);
+      setIsProcessingAnswer(false);
     }
-  }, [questionIndex, questions, answers, restaurantCode, isProcessingAnswer]);
+  }, [pendingAnswerDirection, responseId, restaurantCode, questionIndex, questionMetadata, answers, questions, saveQuestionDetails]);
+
+  // Handle answer submission - show details input on same page
+  const handleAnswer = useCallback((direction: string) => {
+    if (isProcessingAnswer) {
+      console.log('Already processing an answer, ignoring this one');
+      return;
+    }
+    
+    // Store the answer direction and mark question as answered
+    // Allow changing answer if user swipes again
+    setPendingAnswerDirection(direction);
+    setCurrentQuestionAnswered(true);
+  }, [isProcessingAnswer]);
+  
+  // Handle contact details submission
+  const handleContactSubmit = useCallback(async () => {
+    if (!responseId || !contactType || !contactValue.trim()) {
+      console.log('Contact submit blocked:', { responseId, contactType, contactValue: contactValue.trim() });
+      return;
+    }
+
+    setIsSavingContact(true);
+    
+    // Hide contact question and show lottery
+    setShowContactQuestion(false);
+    setShowLottery(true);
+    setIsRolling(true);
+    
+    // Determine win/loss (1 in 10 chance)
+    const hasWon = Math.random() < 0.1; // 10% chance
+    
+    // Roll animation for 2 seconds
+    setTimeout(async () => {
+      setIsRolling(false);
+      setLotteryResult(hasWon ? 'win' : 'lose');
+      
+      // Save contact details after showing result
+      try {
+        const supabase = createClient();
+        const contactDetails: { phone_number?: string; email?: string } = {};
+        
+        if (contactType === 'phone') {
+          contactDetails.phone_number = contactValue.trim();
+        } else if (contactType === 'email') {
+          contactDetails.email = contactValue.trim();
+        }
+        
+        const { error: updateError } = await supabase
+          .from('survey_responses')
+          .update({ 
+            contact_details: contactDetails,
+            lottery: hasWon
+          })
+          .eq('id', responseId);
+
+        if (updateError) {
+          console.error('Error updating contact details:', updateError);
+        }
+      } catch (err) {
+        console.error('Error saving contact details:', err);
+      } finally {
+        setIsSavingContact(false);
+      }
+      
+      // After result, go to final screen
+      setTimeout(() => {
+        setShowLottery(false);
+        setFinished(true);
+      }, 3500);
+    }, 2000);
+  }, [responseId, contactType, contactValue]);
+
+  // Handle skip contact details
+  const handleSkipContact = () => {
+    setShowContactQuestion(false);
+    setFinished(true);
+  };
+
+  // Handle photo file selection
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setUploadError('File size must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validImageTypes.includes(file.type)) {
+      setUploadError('Please upload a valid image file (JPEG, PNG, WebP, or GIF)');
+      return;
+    }
+
+    setUploadError(null);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setQuestionDetails(prev => {
+        const newDetails = [...prev];
+        newDetails[questionIndex] = {
+          ...newDetails[questionIndex],
+          photo: file,
+          photoPreview: reader.result as string
+        };
+        return newDetails;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle remove photo
+  const handleRemovePhoto = () => {
+    setQuestionDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[questionIndex] = {
+        ...newDetails[questionIndex],
+        photo: null,
+        photoPreview: null
+      };
+      return newDetails;
+    });
+    setUploadError(null);
+  };
+
+  // Handle text change
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setQuestionDetails(prev => {
+      const newDetails = [...prev];
+      newDetails[questionIndex] = {
+        ...newDetails[questionIndex],
+        text: e.target.value
+      };
+      return newDetails;
+    });
+  };
+
   
   // Swipe detection handlers with velocity and smooth animations
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Don't trigger swipe if touching interactive elements
+    const target = e.target as HTMLElement;
+    const isInteractiveElement = 
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'BUTTON' ||
+      target.closest('textarea') ||
+      target.closest('input') ||
+      target.closest('button') ||
+      target.closest('label');
+    
+    if (isInteractiveElement) {
+      return;
+    }
+
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchStartTime.current = Date.now();
@@ -398,574 +885,400 @@ function SurveyContent() {
     };
   };
 
-  // Get swipe direction indicator styles with improved visuals
-  const getSwipeIndicatorStyles = () => {
-    const intensity = Math.min(Math.abs(swipeOffset) / 150, 1);
 
-    if (!swipeDirection || intensity < 0.2) return { opacity: 0 };
-
-    // Use red for not satisfied (left), green for satisfied (right)
-    const leftColor = surveyType === 'operational'
-      ? 'rgba(239, 68, 68, INTENSITY)' // Red for not satisfied
-      : 'rgba(255, 75, 75, INTENSITY)'; // Original red for custom
-    const rightColor = surveyType === 'operational'
-      ? 'rgba(34, 197, 94, INTENSITY)' // Green for satisfied
-      : 'rgba(75, 255, 75, INTENSITY)'; // Original green for custom
-
-    return {
-      background: swipeDirection === 'left'
-        ? `linear-gradient(to left, transparent 0%, ${leftColor.replace('INTENSITY', String(intensity * 0.5))} 100%)`
-        : `linear-gradient(to right, transparent 0%, ${rightColor.replace('INTENSITY', String(intensity * 0.5))} 100%)`,
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 1,
-      pointerEvents: 'none',
-      transition: isSwiping ? 'none' : 'opacity 0.3s ease',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: swipeDirection === 'left' ? 'flex-start' : 'flex-end',
-      padding: '20px'
-    };
-  };
-
-  if (isLoading) {
-    return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000000',
-        color: '#ffffff'
-      }}>
-        Loading survey...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#000000',
-        color: '#ffffff',
-        padding: '20px',
-        textAlign: 'center'
-      }}>
-        <h2 style={{ marginBottom: '20px' }}>Error</h2>
-        <p>{error}</p>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
+  if (error) return <div className="h-screen flex items-center justify-center text-red-500">{error}</div>;
 
   return (
-    <div 
-      style={{
-        background: '#000000',
-        height: '100vh', // Fixed height to viewport height
-        maxHeight: '100vh', // Ensure it doesn't exceed viewport
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: windowWidth < 768 ? 'flex-start' : 'center',
-        color: '#ffffff',
-        textAlign: 'center',
-        padding: windowWidth < 768 ? '10px 20px 60px' : '20px',
-        fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-        boxSizing: 'border-box',
-        paddingTop: windowWidth < 768 ? '40px' : '20px',
-        overflow: 'hidden', // Prevent scrolling
-        position: 'fixed', // Fix position to viewport
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0
-      }}
-    >
-      {/* Main container */}
-      <div
-        style={{
-          position: 'relative',
-          maxWidth: '650px',
-          width: '100%',
-          borderRadius: '0',
-          overflow: 'hidden',
-          background: '#000000',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-          padding: finished ? '40px' : windowWidth < 768 ? '30px 20px' : '60px 40px',
-          touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          ...(showQuestions && !finished ? getCardTransform() : {})
-        }}
-        onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
-        onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
-        onTouchEnd={showQuestions && !finished ? handleTouchEnd : undefined}
-      >
-        {/* Swipe direction indicator overlay with visual feedback and emoji */}
-        {swipeDirection && (
-          <div style={getSwipeIndicatorStyles() as React.CSSProperties}>
-            <div style={{
-              fontSize: '64px',
-              fontWeight: 'bold',
-              textShadow: '0 4px 20px rgba(0, 0, 0, 0.8)',
-              transform: 'scale(1.1)',
-              animation: 'pulse 0.5s ease infinite',
-              zIndex: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <div>{swipeDirection === 'left' ? '😞' : '😊'}</div>
-              <div style={{
-                fontSize: '20px',
-                fontWeight: 600,
-                color: '#ffffff',
-                textTransform: 'uppercase',
-                letterSpacing: '2px'
-              }}>
-                {surveyType === 'operational'
-                  ? (swipeDirection === 'left' ? 'Not Satisfied' : 'Satisfied')
-                  : (swipeDirection === 'left' ? 'Left' : 'Right')
-                }
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Initial screen */}
-        {!showQuestions && !finished && (
-          <div style={{ 
-            animation: 'fadeIn 0.8s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '40px'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{ 
-              position: 'relative', 
-              width: '100%', 
-              height: windowWidth < 768 ? '250px' : '350px',
-              overflow: 'hidden',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src={getCurrentImage()}
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div style={{
-              maxWidth: '450px',
-              margin: '0 auto'
-            }}>
-              <h2 style={{ 
-                fontSize: windowWidth < 768 ? '28px' : '32px',
-                fontWeight: 700,
-                marginBottom: windowWidth < 768 ? '16px' : '24px',
-                color: '#fff',
-                lineHeight: 1.2,
-                fontFamily: 'Georgia, serif'
-              }}>
-                {surveyTitle}
-              </h2>
-              
-              {surveyLocation && (
-                <p style={{
-                  fontSize: windowWidth < 768 ? '16px' : '18px',
-                  color: '#cccccc',
-                  marginBottom: '16px'
-                }}>
-                  {surveyLocation}
-                </p>
-              )}
-              
-              <p style={{
-                fontSize: windowWidth < 768 ? '14px' : '16px',
-                lineHeight: 1.6,
-                color: '#cccccc',
-                marginBottom: windowWidth < 768 ? '20px' : '30px'
-              }}>
-                Take a moment to share your thoughts with us.
-              </p>
-              
-              <button 
-                onClick={handleStart}
-                style={{
-                  padding: '16px 32px',
-                  fontSize: '16px',
-                  cursor: 'pointer',
-                  backgroundColor: '#ffffff',
-                  border: 'none',
-                  borderRadius: '50px',
-                  color: '#000000',
-                  fontWeight: 600,
-                  letterSpacing: '1px',
-                  transition: 'all 0.3s ease',
-                  outline: 'none',
-                  textTransform: 'uppercase'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.backgroundColor = '#e6e6e6';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.backgroundColor = '#ffffff';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                START
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Questions screen */}
-        {showQuestions && !finished && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '30px'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{
-              position: 'relative',
-              width: '100%',
-              height: windowWidth < 768 ? '250px' : '350px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src={getCurrentImage()}
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: surveyType === 'operational'
-                    ? 'brightness(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.15))'
-                    : 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div style={{ 
-              animation: 'fadeIn 0.4s ease',
-            }}>
-              <h2 style={{ 
-                fontSize: '24px',
-                fontWeight: 600,
-                marginBottom: '24px',
-                color: '#fff',
-                fontFamily: 'Georgia, serif',
-                lineHeight: 1.4
-              }}>
-                {questions[questionIndex]}
-              </h2>
-              
-              {/* Clickable emoji indicators - work on both mobile and desktop */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px',
-                padding: '0 30px',
-                gap: '20px'
-              }}>
-                {/* Left emoji - clickable */}
-                <div
-                  onClick={() => handleEmojiClick('left')}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    opacity: clickedEmoji === 'left' ? 1 : 0.7,
-                    transform: clickedEmoji === 'left' ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                  onMouseEnter={e => {
-                    if (clickedEmoji !== 'left') {
-                      e.currentTarget.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (clickedEmoji !== 'left') {
-                      e.currentTarget.style.opacity = '0.7';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }
-                  }}
-                >
-                  <div style={{ fontSize: '48px' }}>😞</div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}>
-                    {surveyType === 'operational' ? 'Not Satisfied' : 'Left'}
-                  </div>
-                </div>
-
-                {/* Right emoji - clickable */}
-                <div
-                  onClick={() => handleEmojiClick('right')}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    opacity: clickedEmoji === 'right' ? 1 : 0.7,
-                    transform: clickedEmoji === 'right' ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                  onMouseEnter={e => {
-                    if (clickedEmoji !== 'right') {
-                      e.currentTarget.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (clickedEmoji !== 'right') {
-                      e.currentTarget.style.opacity = '0.7';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }
-                  }}
-                >
-                  <div style={{ fontSize: '48px' }}>😊</div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}>
-                    {surveyType === 'operational' ? 'Satisfied' : 'Right'}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Progress indicator */}
-              <div style={{ 
-                marginTop: '30px', 
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '10px'
-              }}>
-                {questions.map((_, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{
-                      width: '30px',
-                      height: '4px',
-                      background: idx === questionIndex ? '#ffffff' : '#333333',
-                      transition: 'all 0.3s ease'
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Result screen */}
-        {finished && (
-          <div style={{ 
-            animation: 'fadeIn 0.8s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '40px'
-          }}>
-            {/* Fortune cookie image */}
-            <div style={{ 
-              position: 'relative', 
-              width: '100%',
-              height: windowWidth < 768 ? '250px' : '350px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <Image
-                src="/survey/4.png"
-                alt="Fortune Cookie"
-                width={windowWidth < 768 ? 250 : 350}
-                height={windowWidth < 768 ? 250 : 350}
-                style={{
-                  objectFit: 'contain',
-                  transition: 'all 0.6s ease',
-                  filter: 'drop-shadow(0 0 8px rgba(235, 37, 42, 0.2))'
-                }}
-                priority
-              />
-            </div>
-            
-            <div>
-              <h2 style={{ 
-                fontSize: windowWidth < 768 ? '24px' : '28px',
-                fontWeight: 700,
-                marginBottom: windowWidth < 768 ? '20px' : '30px',
-                color: '#fff',
-                fontFamily: 'Georgia, serif'
-              }}>
-                Your Fortune Awaits
-              </h2>
-              
-              {/* Fortune slip */}
-              <div style={{
-                position: 'relative',
-                margin: windowWidth < 768 ? '15px auto' : '40px auto',
-                padding: windowWidth < 768 ? '20px' : '30px',
-                background: '#fff',
-                border: 'none',
-                maxWidth: '400px',
-                boxShadow: '0 5px 15px rgba(235, 37, 42, 0.2)'
-              }}>
-                <p style={{ 
-                  fontStyle: 'italic', 
-                  fontSize: '18px',
-                  color: '#333',
-                  fontWeight: 500,
-                  lineHeight: 1.8,
-                  fontFamily: 'Georgia, serif',
-                  position: 'relative',
-                  textAlign: 'center',
-                  margin: 0
-                }}>
-                  &quot;{fortuneWisdom}&quot;
-                </p>
-                
-                <div style={{
-                  position: 'absolute',
-                  top: '-2px',
-                  left: '15%',
-                  right: '15%',
-                  height: '3px',
-                  background: '#EB252A'
-                }} />
-              </div>
-              
-              <p style={{
-                fontSize: '14px',
-                color: '#999999',
-                marginTop: '20px',
-                fontStyle: 'italic'
-              }}>Share your fortune with friends</p>
-              
-              {/* Social sharing buttons */}
-              <div style={{
-                display: 'flex',
-                gap: '15px',
-                justifyContent: 'center',
-                marginTop: '15px'
-              }}>
-                {['twitter', 'fb', 'apple'].map(icon => (
-                  <button
-                    key={icon}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      border: 'none',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 0,
-                      borderRadius: '50%',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(235, 37, 42, 0.2)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <Image 
-                      src={`/icons/${icon}-icon.svg`} 
-                      alt={`${icon} icon`} 
-                      width={20} 
-                      height={20}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="relative w-full h-screen overflow-hidden">
+      <ParticleCanvas />
       
-      {/* Mobile swipe instruction */}
-      {showQuestions && !finished && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '12px 20px',
-          borderRadius: '4px',
-          background: 'rgba(40, 40, 40, 0.8)',
-          fontSize: '14px',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 10
-        }}>
-          <span>Swipe left or right to continue</span>
-        </div>
-      )}
-      
-      {/* Styles for animations */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+        .glass-card {
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-          background: #000000;
-        }
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+        .animate-slideUp { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
       `}</style>
+
+      <div className="fixed inset-0 flex flex-col items-center justify-center p-5 md:p-8">
+        {/* MAIN CARD */}
+        <div 
+          className="glass-card w-full max-w-[420px] min-h-[600px] rounded-[32px] relative overflow-hidden flex flex-col text-white"
+          style={{
+            touchAction: showQuestions && !finished ? 'pan-y' : 'auto',
+            ...((showQuestions && !finished) ? getCardTransform() : {})
+          }}
+          onTouchStart={showQuestions && !finished ? handleTouchStart : undefined}
+          onTouchMove={showQuestions && !finished ? handleTouchMove : undefined}
+          onTouchEnd={showQuestions && !finished ? handleTouchEnd : undefined}
+        >
+
+            {/* Swipe Feedback Overlay */}
+            <div 
+                className={`absolute inset-0 pointer-events-none z-10 flex items-center p-10 transition-opacity duration-300
+                ${swipeDirection === 'left' ? 'justify-start bg-gradient-to-r from-red-500/20 to-transparent' : ''}
+                ${swipeDirection === 'right' ? 'justify-end bg-gradient-to-l from-green-500/20 to-transparent' : ''}
+                ${!swipeDirection ? 'opacity-0' : 'opacity-100'}
+                `}
+            >
+                {swipeDirection && (
+                    <div className="text-6xl drop-shadow-lg transform scale-110 transition-transform">
+                        {swipeDirection === 'left' ? '😞' : '😊'}
+                    </div>
+                )}
+            </div>
+
+            {/* CONTENT AREA */}
+            <div className="flex-1 flex flex-col p-8 items-center justify-center w-full">
+                
+                {/* 1. START SCREEN */}
+                {!showQuestions && !finished && !showContactQuestion && !showLottery && (
+                    <div className="animate-slideUp w-full text-center flex flex-col items-center">
+                        <div className="w-60 h-60 mb-8 relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 group">
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10" />
+                            <Image 
+                                src={getCurrentImage()} 
+                                alt="Welcome" 
+                                width={240}
+                                height={240}
+                                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                                priority
+                            />
+                        </div>
+                        
+                        <h1 className="font-playfair text-3xl font-semibold mb-2 leading-tight tracking-tight text-white">
+                            {surveyTitle || 'The Golden Lotus'}
+                        </h1>
+                        
+                        <p className="text-white/60 mb-8 font-inter text-sm tracking-wide uppercase">
+                            {surveyLocation || 'Your favorite restaurant'}
+                        </p>
+                        
+                        <p className="text-white/80 mb-10 text-[15px] leading-relaxed max-w-[280px] font-light">
+                            We value your presence. Help us curate better moments with a few simple touches.
+                        </p>
+                        
+                        <button 
+                            onClick={handleStart}
+                            className="bg-white text-black px-12 py-4 rounded-full text-sm font-bold tracking-widest uppercase 
+                            hover:bg-gray-200 active:scale-95 transition-all duration-300 shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]"
+                        >
+                            Begin
+                        </button>
+                    </div>
+                )}
+
+                {/* 3. CONTACT INPUT */}
+                {showContactQuestion && !finished && (
+                    <div className="animate-slideUp w-full text-center flex flex-col items-center justify-center h-full">
+                        <div className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(212,175,55,0.4)]">
+                            <Trophy className="text-black w-8 h-8" />
+                        </div>
+
+                        <h2 className="font-playfair text-3xl mb-3 text-white">Stay connected</h2>
+                        <p className="text-white/60 mb-8 text-sm max-w-[260px] leading-relaxed">
+                            Enter your contact details for a chance to win a complimentary drink.
+                        </p>
+
+                        {/* Toggle */}
+                        <div className="bg-white/10 p-1 rounded-full inline-flex mb-8 backdrop-blur-md">
+                            <button 
+                                onClick={() => { setContactType('phone'); setContactValue(''); }}
+                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                ${contactType === 'phone' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                            >
+                                Phone
+                            </button>
+                            <button 
+                                onClick={() => { setContactType('email'); setContactValue(''); }}
+                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                ${contactType === 'email' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                            >
+                                Email
+                            </button>
+                        </div>
+
+                        {contactType && (
+                            <div className="w-full mb-6 animate-fadeIn">
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
+                                        {contactType === 'phone' ? <Phone size={18} /> : <Mail size={18} />}
+                                    </div>
+                                    <input
+                                        type={contactType === 'phone' ? 'tel' : 'email'}
+                                        value={contactValue}
+                                        onChange={(e) => setContactValue(e.target.value)}
+                                        placeholder={contactType === 'phone' ? '(555) 000-0000' : 'you@example.com'}
+                                        className="w-full bg-white/5 border border-white/20 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-white/20 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all text-center"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-3 w-full">
+                            <button
+                                onClick={handleContactSubmit}
+                                disabled={!contactType || !contactValue.trim() || isSavingContact}
+                                className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-300
+                                ${(!contactType || !contactValue.trim() || isSavingContact) 
+                                    ? 'bg-white/10 text-white/20 cursor-not-allowed' 
+                                    : 'bg-[#D4AF37] text-black hover:bg-[#E5C158] shadow-[0_0_20px_rgba(212,175,55,0.3)]'}`}
+                            >
+                                {isSavingContact ? 'Submitting...' : 'Enter Draw'}
+                            </button>
+                            <button
+                                onClick={handleSkipContact}
+                                className="text-xs uppercase tracking-widest text-white/40 hover:text-white transition-colors py-2"
+                            >
+                                No thanks, skip
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. LOTTERY ANIMATION */}
+                {showLottery && (
+                    <div className="animate-fadeIn w-full text-center flex flex-col items-center justify-center h-full">
+                        <h2 className="font-playfair text-2xl mb-8 text-[#D4AF37]">
+                            {isRolling ? 'Manifesting luck...' : lotteryResult === 'win' ? 'Destiny calls!' : 'Almost there'}
+                        </h2>
+                        
+                        <div className="w-full h-40 bg-black/40 rounded-2xl border border-[#D4AF37]/50 flex items-center justify-center mb-8 overflow-hidden relative shadow-inner shadow-black">
+                            <div className="absolute inset-0 bg-[#D4AF37]/5 animate-pulse" />
+                             
+                             {isRolling ? (
+                                 <div className="flex gap-8 text-5xl animate-bounce">
+                                    <span>🎰</span><span>🎲</span><span>✨</span>
+                                 </div>
+                             ) : lotteryResult === 'win' ? (
+                                 <div className="flex flex-col items-center animate-slideUp">
+                                    <div className="flex gap-4 mb-2 text-[#D4AF37]">
+                                        <Wine size={40} />
+                                        <PartyPopper size={40} />
+                                    </div>
+                                    <span className="text-4xl font-bold text-white">WINNER</span>
+                                 </div>
+                             ) : (
+                                 <div className="animate-slideUp text-gray-400 flex flex-col items-center">
+                                     <XCircle size={48} className="mb-2 opacity-50"/>
+                                     <span className="text-xl">Not this time</span>
+                                 </div>
+                             )}
+                        </div>
+
+                        {!isRolling && lotteryResult === 'win' && (
+                            <div className="bg-green-500/20 border border-green-500/30 p-4 rounded-xl text-green-300 text-sm font-medium animate-fadeIn">
+                                Show this screen to your server to claim your complimentary drink.
+                            </div>
+                        )}
+                         {!isRolling && lotteryResult === 'lose' && (
+                            <div className="text-white/50 text-sm animate-fadeIn max-w-xs">
+                                The stars didn&apos;t align today, but we look forward to serving you again soon.
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 2. QUESTION SCREEN */}
+                {showQuestions && !finished && !showContactQuestion && !showLottery && (
+                     <div className="animate-fadeIn w-full h-full flex flex-col justify-between">
+                        {/* Progress Bar */}
+                        <div className="flex gap-1 mb-6">
+                            {questions.map((_, idx) => (
+                                <div key={idx} 
+                                    className={`h-1 flex-1 rounded-full transition-all duration-500 
+                                    ${idx <= questionIndex ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/10'}`}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                             <div className="w-52 h-52 relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                                <Image 
+                                    src={getCurrentImage()} 
+                                    alt="Question Context" 
+                                    width={208}
+                                    height={208}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            
+                            <h2 className="font-playfair text-2xl md:text-3xl text-center leading-tight mb-6 px-2 text-white">
+                                {questions[questionIndex]}
+                            </h2>
+
+                            {/* Answer Options - Always Visible */}
+                            <div className="flex w-full justify-between px-4 gap-4 mb-6">
+                                <button 
+                                    onClick={() => handleEmojiClick('left')} 
+                                    disabled={isProcessingAnswer}
+                                    className={`flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-200 group
+                                    ${currentQuestionAnswered && pendingAnswerDirection === 'left' ? 'ring-2 ring-[#D4AF37] bg-white/10' : ''}
+                                    ${isProcessingAnswer ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <div className="text-4xl transform group-hover:scale-110 transition-transform group-active:scale-90">😞</div>
+                                    <span className="text-[10px] uppercase tracking-widest opacity-70 font-semibold text-white">
+                                        {surveyType === 'operational' ? 'Dissatisfied' : 'Left'}
+                                    </span>
+                                </button>
+
+                                <button 
+                                    onClick={() => handleEmojiClick('right')} 
+                                    disabled={isProcessingAnswer}
+                                    className={`flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-200 group
+                                    ${currentQuestionAnswered && pendingAnswerDirection === 'right' ? 'ring-2 ring-[#D4AF37] bg-white/10' : ''}
+                                    ${isProcessingAnswer ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <div className="text-4xl transform group-hover:scale-110 transition-transform group-active:scale-90">😊</div>
+                                    <span className="text-[10px] uppercase tracking-widest opacity-70 font-semibold text-white">
+                                        {surveyType === 'operational' ? 'Delighted' : 'Right'}
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Optional Details Section - Always Visible */}
+                            <div className="w-full space-y-3 animate-fadeIn">
+                                <p className="text-white/60 text-xs text-center">Add details (optional)</p>
+                                
+                                {/* Tabs */}
+                                <div className="bg-white/10 p-1 rounded-full inline-flex w-full backdrop-blur-md">
+                                    <button 
+                                        onClick={() => setDetailsTab('photo')}
+                                        className={`flex-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                        ${detailsTab === 'photo' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                                    >
+                                        <Camera size={12} className="inline mr-1.5" />
+                                        Photo
+                                    </button>
+                                    <button 
+                                        onClick={() => setDetailsTab('text')}
+                                        className={`flex-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all
+                                        ${detailsTab === 'text' ? 'bg-white text-black shadow-lg' : 'text-white/60 hover:text-white'}`}
+                                    >
+                                        Text
+                                    </button>
+                                </div>
+
+                                {/* Photo Tab */}
+                                {detailsTab === 'photo' && (
+                                    <div className="space-y-2">
+                                        {questionDetails[questionIndex]?.photoPreview ? (
+                                            <div className="relative">
+                                                <Image 
+                                                    src={questionDetails[questionIndex].photoPreview!} 
+                                                    alt="Preview" 
+                                                    width={400}
+                                                    height={112}
+                                                    className="w-full h-28 object-cover rounded-xl"
+                                                    unoptimized
+                                                />
+                                                <button
+                                                    onClick={handleRemovePhoto}
+                                                    className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 rounded-full p-1.5 transition-colors"
+                                                >
+                                                    <X size={12} className="text-white" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-white/20 rounded-xl cursor-pointer hover:border-white/40 transition-colors bg-white/5">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <Camera size={20} className="text-white/40 mb-1" />
+                                                    <p className="text-xs text-white/60">Tap to add photo</p>
+                                                </div>
+                                                <input 
+                                                    type="file" 
+                                                    className="hidden" 
+                                                    accept="image/*"
+                                                    onChange={handlePhotoSelect}
+                                                />
+                                            </label>
+                                        )}
+                                        {uploadError && (
+                                            <p className="text-red-400 text-xs text-center">{uploadError}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Text Tab */}
+                                {detailsTab === 'text' && (
+                                    <div className="space-y-2">
+                                        <textarea
+                                            value={questionDetails[questionIndex]?.text || ''}
+                                            onChange={handleTextChange}
+                                            placeholder="Share your feedback..."
+                                            className="w-full bg-white/5 border border-white/20 rounded-xl py-2.5 px-3 text-white placeholder:text-white/20 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all resize-none text-sm"
+                                            rows={3}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Continue Button - Show when answer is selected */}
+                                {currentQuestionAnswered && (
+                                    <div className="flex flex-col gap-2 pt-2">
+                                        <button
+                                            onClick={handleContinueFromDetails}
+                                            disabled={isProcessingAnswer || isUploadingMedia}
+                                            className={`w-full py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-300
+                                            ${(isProcessingAnswer || isUploadingMedia) 
+                                                ? 'bg-white/10 text-white/20 cursor-not-allowed' 
+                                                : 'bg-[#D4AF37] text-black hover:bg-[#E5C158] shadow-[0_0_20px_rgba(212,175,55,0.3)]'}`}
+                                        >
+                                            {isUploadingMedia ? 'Uploading...' : isProcessingAnswer ? 'Saving...' : 'Continue'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {!currentQuestionAnswered && (
+                            <div className="text-center opacity-50 text-[10px] uppercase tracking-widest mt-4 text-white">
+                                Swipe card to answer
+                            </div>
+                        )}
+                     </div>
+                )}
+
+                {/* 5. FINAL FORTUNE */}
+                {finished && !showLottery && (
+                     <div className="animate-fadeIn w-full text-center flex flex-col items-center">
+                        <div className="w-32 h-32 mb-6 relative">
+                             <Image 
+                                 src="/survey/4.png" 
+                                 alt="Fortune" 
+                                 width={128}
+                                 height={128}
+                                 className="w-full h-full object-contain opacity-90"
+                             />
+                        </div>
+                        
+                        <h2 className="font-playfair text-2xl text-[#D4AF37] mb-6">
+                            Your Fortune
+                        </h2>
+                        
+                        <div className="bg-[#fffdf5] text-black p-8 relative mb-8 shadow-2xl max-w-xs mx-auto transform rotate-1">
+                            <p className="font-playfair italic text-lg leading-relaxed opacity-80">
+                                &quot;{fortuneWisdom}&quot;
+                            </p>
+                             <div className="h-1 w-12 bg-[#D4AF37] mx-auto mt-6" />
+                        </div>
+                        
+                        <p className="text-[10px] opacity-40 uppercase tracking-[0.3em]">Thank you for visiting</p>
+                     </div>
+                )}
+            </div>
+        </div>
+      </div>
     </div>
   );
 }
